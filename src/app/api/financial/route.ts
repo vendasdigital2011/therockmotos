@@ -275,6 +275,19 @@ export async function PATCH(request: Request) {
       if (!Number.isFinite(finalPaidAmount) || finalPaidAmount <= 0) {
         return NextResponse.json({ error: 'Valor pago inválido' }, { status: 400 });
       }
+      // Baixa parcial: acumula em paidAmount e só marca PAGO quando o total
+      // cobre o valor do título. Saldo em aberto continua PENDENTE.
+      const alreadyPaid = Number(entry.paidAmount ?? 0);
+      const remaining = Number(entry.amount) - alreadyPaid;
+      const CENT = 0.005;
+      if (finalPaidAmount > remaining + CENT) {
+        return NextResponse.json(
+          { error: `Valor pago maior que o saldo em aberto (R$ ${remaining.toFixed(2)}).` },
+          { status: 400 }
+        );
+      }
+      const totalPaid = alreadyPaid + finalPaidAmount;
+      const settled = totalPaid >= Number(entry.amount) - CENT;
       const targetAccountId = financialAccountId || entry.financialAccountId;
 
       // Executar baixa atômica atualizando o título e o saldo da conta financeira
@@ -282,8 +295,8 @@ export async function PATCH(request: Request) {
         const updatedEntry = await tx.financialEntry.update({
           where: { id: entryId },
           data: {
-            status: 'PAGO',
-            paidAmount: finalPaidAmount,
+            status: settled ? 'PAGO' : 'PENDENTE',
+            paidAmount: totalPaid,
             paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
             financialAccountId: targetAccountId,
           },

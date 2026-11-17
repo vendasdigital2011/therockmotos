@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUser, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
@@ -86,6 +87,16 @@ const MAX_FIELD = 500;
 export async function POST(request: Request) {
   try {
     const staff = await getCurrentUser();
+    // Antispam do formulário público: máx. 5 envios por IP a cada 10 minutos.
+    if (!staff) {
+      const limit = rateLimit(`lead:${extractClientIp(request)}`, 5, 10 * 60 * 1000);
+      if (!limit.ok) {
+        return NextResponse.json(
+          { error: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+          { status: 429, headers: { 'Retry-After': String(limit.retryAfterSec) } }
+        );
+      }
+    }
     const body = await request.json();
     const { name, phone, email, message } = body ?? {};
     let { motorcycleId } = body ?? {};
@@ -193,6 +204,11 @@ export async function PATCH(request: Request) {
       interactionDesc,
     } = body;
     const authorName = auth.name;
+
+    // Lead perdido precisa de motivo, para o relatório de perdas (PRD 08).
+    if (stage === 'PERDIDO' && !String(lossReason ?? '').trim()) {
+      return NextResponse.json({ error: 'Informe o motivo da perda do lead.' }, { status: 400 });
+    }
 
     const targetId = id || leadId;
     if (!targetId) {

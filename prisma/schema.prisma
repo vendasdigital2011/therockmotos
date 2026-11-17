@@ -58,7 +58,7 @@ model Motorcycle {
   id             String       @id @default(uuid())
   branchId       String
   branch         Branch       @relation(fields: [branchId], references: [id])
-  plate          String       @unique
+  plate          String?      @unique
   brand          String
   model          String
   version        String?

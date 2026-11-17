@@ -156,22 +156,22 @@ export async function POST(request: Request) {
 
     switch (type) {
       case 'CONTRATO_VENDA':
-        title = `Contrato de Compra e Venda - ${motoData.brand} ${motoData.model} (${motoData.plate})`;
+        title = `Contrato de Compra e Venda - ${motoData.brand} ${motoData.model} (${motoData.plate ?? 'sem placa'})`;
         contentHtml = generateSaleContractHtml(buyer, vehicle, financial, sellerName || saleData?.seller?.name);
         break;
 
       case 'TERMO_GARANTIA':
-        title = `Termo de Entrega & Garantia 90D - ${motoData.brand} ${motoData.model} (${motoData.plate})`;
+        title = `Termo de Entrega & Garantia 90D - ${motoData.brand} ${motoData.model} (${motoData.plate ?? 'sem placa'})`;
         contentHtml = generateWarrantyTermHtml(buyer, vehicle);
         break;
 
       case 'RECIBO_SINAL':
-        title = `Recibo de Sinal & Reserva - ${motoData.brand} ${motoData.model} (${motoData.plate})`;
+        title = `Recibo de Sinal & Reserva - ${motoData.brand} ${motoData.model} (${motoData.plate ?? 'sem placa'})`;
         contentHtml = generateDepositReceiptHtml(buyer, vehicle, financial);
         break;
 
       case 'TERMO_RESPONSABILIDADE':
-        title = `Termo de Responsabilidade sobre Multas - ${motoData.brand} ${motoData.model} (${motoData.plate})`;
+        title = `Termo de Responsabilidade sobre Multas - ${motoData.brand} ${motoData.model} (${motoData.plate ?? 'sem placa'})`;
         contentHtml = generateTrafficResponsibilityHtml(buyer, vehicle);
         break;
 

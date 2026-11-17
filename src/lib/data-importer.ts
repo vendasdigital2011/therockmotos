@@ -37,7 +37,9 @@ export async function validateVehicleImport(rows: VehicleImportRow[]): Promise<D
     message: string;
   }> = [];
 
-  const existingPlates = new Set((await prisma.motorcycle.findMany({ select: { plate: true } })).map((m) => m.plate.toUpperCase().trim()));
+  const existingPlates = new Set(
+    (await prisma.motorcycle.findMany({ where: { plate: { not: null } }, select: { plate: true } })).map((m) => (m.plate ?? '').toUpperCase().trim())
+  );
   const existingChassis = new Set((await prisma.motorcycle.findMany({ where: { chassis: { not: null } }, select: { chassis: true } })).map((m) => m.chassis?.toUpperCase().trim()));
 
   const seenInBatchPlates = new Set<string>();

@@ -124,14 +124,17 @@ export async function POST(request: Request) {
       acquisitionCost,
     } = body;
 
-    const cleanPlate = plate.toUpperCase().trim();
+    // Pré-cadastro pode não ter placa: salva como null, sem inventar identificador.
+    const cleanPlate = typeof plate === 'string' && plate.trim() ? plate.toUpperCase().trim() : null;
 
-    // Validar se placa já existe
-    const existing = await prisma.motorcycle.findUnique({
-      where: { plate: cleanPlate },
-    });
-    if (existing) {
-      return NextResponse.json({ error: 'Já existe um veículo cadastrado com esta placa.' }, { status: 400 });
+    // Validar se placa já existe (só quando informada)
+    if (cleanPlate) {
+      const existing = await prisma.motorcycle.findUnique({
+        where: { plate: cleanPlate },
+      });
+      if (existing) {
+        return NextResponse.json({ error: 'Já existe um veículo cadastrado com esta placa.' }, { status: 400 });
+      }
     }
 
     const moto = await prisma.motorcycle.create({
