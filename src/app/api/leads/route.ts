@@ -162,6 +162,11 @@ export async function POST(request: Request) {
       },
     });
 
+    // Anonymous visitors get only the confirmation, never the bike record
+    // (chassis, RENAVAM, plate) or internal data.
+    if (!staff) {
+      return NextResponse.json({ success: true, id: lead.id }, { status: 201 });
+    }
     return NextResponse.json(lead, { status: 201 });
   } catch (error: any) {
     console.error('Erro ao criar lead:', error);

@@ -85,7 +85,13 @@ const escapeHtml = (value: string) =>
 function escapeFields<T extends object>(obj: T): T {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
-    out[k] = typeof v === 'string' ? escapeHtml(v) : v;
+    // Escape everything that is not a number, not only strings: objects and
+    // arrays get stringified into the HTML, so they must be escaped too.
+    if (v == null || typeof v === 'number' || typeof v === 'boolean') {
+      out[k] = v;
+    } else {
+      out[k] = escapeHtml(typeof v === 'string' ? v : String(v));
+    }
   }
   return out as T;
 }
