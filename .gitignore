@@ -48,3 +48,6 @@ next-env.d.ts
 
 # generated local test passwords (scripts/reset_passwords.js)
 /.local-credentials.txt
+
+.vercel
+.env*
