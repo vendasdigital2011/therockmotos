@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { syncListingToPortal, ingestExternalLeadFromWebhook } from '@/lib/portal-adapters';
+import { syncListingToPortal } from '@/lib/portal-adapters';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE']);
@@ -96,15 +96,6 @@ export async function POST(request: Request) {
     }
 
     // 2. Webhook simulado ou real de recebimento de Lead
-    if (action === 'webhook') {
-      if (!providerCode || !payload) {
-        return NextResponse.json({ error: 'Provedor e payload obrigatórios para webhook' }, { status: 400 });
-      }
-
-      const result = await ingestExternalLeadFromWebhook(providerCode, payload);
-      return NextResponse.json(result);
-    }
-
     // 3. Ativar / Desativar canal de integração
     if (action === 'toggle_provider') {
       const { providerId, isActive } = body;

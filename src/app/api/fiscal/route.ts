@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import {
   issueFiscalDocument,
   createDynamicPixCharge,
-  processBankWebhook,
   registerRenaveOperation,
 } from '@/lib/fiscal-bank-renave';
 
@@ -96,17 +95,6 @@ export async function POST(request: Request) {
     }
 
     // 3. Webhook de liquidação bancária (PRD 12B)
-    if (action === 'bank_webhook') {
-      const { txid, endToEndId, valorPago, dataPagamento } = body;
-      const result = await processBankWebhook({
-        txid,
-        endToEndId,
-        valorPago: valorPago ? Number(valorPago) : undefined,
-        dataPagamento,
-      });
-      return NextResponse.json(result);
-    }
-
     // 4. Operação RENAVE (Entrada ou Saída)
     if (action === 'renave_op') {
       const { motorcycleId, operationType, crvNumero } = body;
