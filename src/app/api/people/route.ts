@@ -15,13 +15,16 @@ export async function GET(request: Request) {
     const search = searchParams.get('search')?.trim();
     const role = searchParams.get('role'); // CLIENTE, FORNECEDOR, OFICINA, DESPACHANTE
 
+    const canSeeDoc = SEE_FULL_DOCUMENT.includes(auth.role);
     const where: any = { active: true };
 
     if (search) {
       where.OR = [
         { name: { contains: search } },
         { tradeName: { contains: search } },
-        { document: { contains: search } },
+        // Documento só entra na busca para quem vê o documento completo: evita
+        // descobrir CPFs por tentativa (busca) com dado mascarado.
+        ...(canSeeDoc ? [{ document: { contains: search } }] : []),
         { phone: { contains: search } },
         { email: { contains: search } },
       ];
@@ -54,7 +57,6 @@ export async function GET(request: Request) {
       orderBy: { name: 'asc' },
     });
 
-    const canSeeDoc = SEE_FULL_DOCUMENT.includes(auth.role);
     return NextResponse.json(canSeeDoc ? people : people.map((p) => ({ ...p, document: maskDocument(p.document) })));
   } catch (error: any) {
     console.error('Erro ao listar pessoas:', error);

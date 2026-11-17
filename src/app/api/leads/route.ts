@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUser, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit, trustedClientIp } from '@/lib/rate-limit';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     const staff = await getCurrentUser();
     // Antispam do formulário público: máx. 5 envios por IP a cada 10 minutos.
     if (!staff) {
-      const limit = rateLimit(`lead:${extractClientIp(request)}`, 5, 10 * 60 * 1000);
+      const limit = rateLimit(`lead:${trustedClientIp(request)}`, 5, 10 * 60 * 1000);
       if (!limit.ok) {
         return NextResponse.json(
           { error: 'Muitas tentativas. Tente novamente em alguns minutos.' },
