@@ -147,7 +147,7 @@ export async function POST(request: Request) {
         yearMfg: Number(yearMfg),
         yearModel: Number(yearModel),
         color,
-        mileage: Number(mileage),
+        mileage: Number(mileage) || 0, // pré-cadastro pode não ter quilometragem ainda
         fuel,
         displacement: displacement ? Number(displacement) : null,
         chassis: chassis || null,
