@@ -78,6 +78,13 @@ export async function PATCH(
     }
 
     const userName = auth.name;
+
+    // Publicar/retirar da vitrine: só ADMIN e GERENTE.
+    const { isPublic } = body ?? {};
+    if (isPublic !== undefined && !['ADMIN', 'GERENTE'].includes(auth.role)) {
+      return NextResponse.json({ error: 'Somente administrador ou gerente publica a moto na vitrine.' }, { status: 403 });
+    }
+
     const {
       status,
       statusReason,
@@ -128,6 +135,17 @@ export async function PATCH(
       });
     }
 
+    if (typeof isPublic === 'boolean' && isPublic !== currentMoto.isPublic) {
+      await logAudit({
+        userId: auth.id,
+        action: isPublic ? 'PUBLISH' : 'UNPUBLISH',
+        entity: 'Motorcycle',
+        entityId: id,
+        details: `Moto ${currentMoto.brand} ${currentMoto.model} ${isPublic ? 'publicada na' : 'retirada da'} vitrine por ${userName}.`,
+        ipAddress: extractClientIp(request),
+      });
+    }
+
     const updated = await prisma.motorcycle.update({
       where: { id },
       data: {
@@ -143,6 +161,7 @@ export async function PATCH(
         fipeCode: fipeCode !== undefined ? fipeCode : undefined,
         fipeRefMonth: fipeRefMonth !== undefined ? fipeRefMonth : undefined,
         features: features ? (typeof features === 'string' ? features : JSON.stringify(features)) : undefined,
+        isPublic: typeof isPublic === 'boolean' ? isPublic : undefined,
       },
       include: {
         costs: true,

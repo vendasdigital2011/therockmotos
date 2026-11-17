@@ -128,6 +128,7 @@ interface Motorcycle {
   ownership?: string;
   condition?: string;
   status: string;
+  isPublic?: boolean;
   publicPrice: number;
   fipeCode?: string;
   fipeValue?: number;
@@ -3019,6 +3020,27 @@ export default function AdminPage() {
                   >
                     Alterar Situação
                   </button>
+                  {(currentUser?.role === 'ADMIN' || currentUser?.role === 'GERENTE') && (
+                    <button
+                      onClick={async () => {
+                        const next = !selectedMoto.isPublic;
+                        const res = await fetch(`/api/motorcycles/${selectedMoto.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ isPublic: next, userName: currentUser?.name || 'Gestor' }),
+                        });
+                        if (res.ok) {
+                          showToast(next ? 'Moto publicada na vitrine' : 'Moto retirada da vitrine');
+                          loadData();
+                        } else {
+                          showToast('Não foi possível alterar a publicação');
+                        }
+                      }}
+                      className={`px-3.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${selectedMoto.isPublic ? 'bg-amber-100 hover:bg-amber-200 text-amber-800' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
+                    >
+                      {selectedMoto.isPublic ? 'Retirar da vitrine' : 'Publicar na vitrine'}
+                    </button>
+                  )}
 
                   {selectedMoto.status !== 'VENDIDA' && (
                     <button

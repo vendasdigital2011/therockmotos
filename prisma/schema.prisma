@@ -84,7 +84,7 @@ model Motorcycle {
   features       String?      // Opcionais/características (JSON ou vírgula)
   description    String?
   isFeatured     Boolean      @default(false)
-  isPublic       Boolean      @default(true)
+  isPublic       Boolean      @default(false) // publicação manual na vitrine
   entryDate      DateTime     @default(now())
   supplierId     String?
   supplier       Customer?    @relation("VehicleSupplier", fields: [supplierId], references: [id])

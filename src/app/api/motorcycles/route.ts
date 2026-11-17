@@ -122,6 +122,7 @@ export async function POST(request: Request) {
       description = '',
       supplierId,
       acquisitionCost,
+      isPublic: wantPublic,
     } = body;
 
     const missing = ['brand', 'model', 'yearMfg', 'yearModel', 'color', 'publicPrice'].filter(
@@ -147,6 +148,8 @@ export async function POST(request: Request) {
     const moto = await prisma.motorcycle.create({
       data: {
         branchId: branch.id,
+        // Nova moto nasce fora da vitrine. Só ADMIN e GERENTE podem publicar já no cadastro.
+        isPublic: ['ADMIN', 'GERENTE'].includes(auth.role) && wantPublic === true,
         plate: cleanPlate,
         brand,
         model,
