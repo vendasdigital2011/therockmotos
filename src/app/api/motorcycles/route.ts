@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
@@ -39,6 +40,10 @@ export async function GET(request: Request) {
       return NextResponse.json(motorcycles);
     }
 
+    // Painel interno: exige login. Custos só para perfis com acesso financeiro.
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+
     // Painel interno: retorna dados completos com custos, tarefas/pendências, fornecedor e histórico
     const motorcycles = await prisma.motorcycle.findMany({
       include: {
@@ -68,6 +73,9 @@ export async function GET(request: Request) {
       orderBy: { entryDate: 'desc' },
     });
 
+    if (!canViewFinancialCosts(auth.role)) {
+      return NextResponse.json(motorcycles.map((m) => ({ ...m, costs: [] })));
+    }
     return NextResponse.json(motorcycles);
   } catch (error) {
     console.error('Erro ao listar motos:', error);
@@ -76,6 +84,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'ESTOQUE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const branch = await prisma.branch.findFirst();
@@ -159,6 +170,7 @@ export async function POST(request: Request) {
                   description: 'Valor de compra / aquisição do veículo',
                   amount: Number(acquisitionCost),
                   supplierId: supplierId || null,
+                  createdByName: auth.name,
                 },
               ],
             }
@@ -169,7 +181,7 @@ export async function POST(request: Request) {
               fromStatus: 'AGUARDANDO_ENTRADA',
               toStatus: status,
               reason: 'Cadastro inicial de entrada no sistema.',
-              userName: 'Usuário do Sistema',
+              userName: auth.name,
             },
           ],
         },

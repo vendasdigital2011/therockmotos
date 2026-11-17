@@ -44,3 +44,7 @@ next-env.d.ts
 *.db
 *.db-journal
 /backups/
+!.env.example
+
+# generated local test passwords (scripts/reset_passwords.js)
+/.local-credentials.txt

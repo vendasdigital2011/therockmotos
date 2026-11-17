@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   generateSaleContractHtml,
@@ -9,6 +10,9 @@ import {
 import { logAudit, extractClientIp } from '@/lib/audit';
 
 export async function GET(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const saleId = searchParams.get('saleId');
@@ -54,6 +58,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const {
@@ -90,7 +97,7 @@ export async function POST(request: Request) {
         include: {
           motorcycle: true,
           customer: true,
-          seller: true,
+          seller: { select: { id: true, name: true, email: true } },
         },
       });
       if (saleData) {
@@ -192,7 +199,7 @@ export async function POST(request: Request) {
     });
 
     await logAudit({
-      userId: saleData?.sellerId || null,
+      userId: auth.id,
       action: 'DOCUMENT_GENERATE',
       entity: 'DocumentContract',
       entityId: doc.id,
@@ -208,6 +215,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { id, status, witness1Name, witness1Doc, witness2Name, witness2Doc } = body;
@@ -230,6 +240,7 @@ export async function PATCH(request: Request) {
 
     if (status === 'ASSINADO') {
       await logAudit({
+        userId: auth.id,
         action: 'DOCUMENT_SIGN',
         entity: 'DocumentContract',
         entityId: updated.id,
@@ -245,6 +256,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

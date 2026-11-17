@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
+  const auth = await requireUser(['ADMIN']);
+  if (auth instanceof NextResponse) return auth;
+
   const startTime = Date.now();
   try {
     // 1. Testa conectividade com banco SQLite/Prisma

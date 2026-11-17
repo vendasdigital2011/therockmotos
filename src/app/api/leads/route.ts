@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireUser, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 
 export async function GET(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const stage = searchParams.get('stage');
@@ -74,25 +78,46 @@ export async function GET(request: Request) {
   }
 }
 
+// Public endpoint: the website showroom form posts here without a login.
+// Anonymous callers can only send contact fields; CRM fields (seller,
+// source, budget, notes...) are accepted only from a logged-in team member.
+const MAX_FIELD = 500;
+
 export async function POST(request: Request) {
   try {
+    const staff = await getCurrentUser();
     const body = await request.json();
+    const { name, phone, email, message } = body ?? {};
+    let { motorcycleId } = body ?? {};
+    const crm = staff ? body : {};
     const {
-      name,
-      phone,
-      email,
-      message,
-      motorcycleId,
       source = 'VITRINE_SITE',
       budget,
       assignedToId,
       nextAction,
       nextActionDate,
       notes,
-    } = body;
+    } = crm;
 
-    if (!name || !phone) {
+    if (typeof name !== 'string' || typeof phone !== 'string' || !name.trim() || !phone.trim()) {
       return NextResponse.json({ error: 'Nome e telefone são obrigatórios' }, { status: 400 });
+    }
+    if (
+      name.length > 120 ||
+      phone.length > 30 ||
+      (email != null && (typeof email !== 'string' || email.length > 200)) ||
+      (message != null && (typeof message !== 'string' || message.length > MAX_FIELD))
+    ) {
+      return NextResponse.json({ error: 'Dados do contato inválidos' }, { status: 400 });
+    }
+
+    // Anonymous leads may only reference a bike that is visible in the showroom.
+    if (!staff && motorcycleId) {
+      const visible = await prisma.motorcycle.findFirst({
+        where: { id: String(motorcycleId), isPublic: true },
+        select: { id: true },
+      });
+      if (!visible) motorcycleId = null;
     }
 
     const cleanPhone = phone.replace(/\D/g, '');
@@ -131,7 +156,7 @@ export async function POST(request: Request) {
       },
       include: {
         motorcycle: true,
-        assignedTo: true,
+        assignedTo: { select: { id: true, name: true, email: true, role: true } },
         interactions: true,
         activities: true,
       },
@@ -145,6 +170,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const {
@@ -158,8 +186,8 @@ export async function PATCH(request: Request) {
       notes,
       interactionType,
       interactionDesc,
-      authorName,
     } = body;
+    const authorName = auth.name;
 
     const targetId = id || leadId;
     if (!targetId) {
@@ -180,7 +208,7 @@ export async function PATCH(request: Request) {
           {
             type: 'ANOTACOES',
             description: `Estágio alterado de ${currentLead.stage} para ${stage}${reasonText}`,
-            authorName: authorName || 'Equipe Comercial',
+            authorName,
           },
         ],
       };
@@ -190,7 +218,7 @@ export async function PATCH(request: Request) {
           {
             type: interactionType,
             description: interactionDesc,
-            authorName: authorName || 'Equipe Comercial',
+            authorName,
           },
         ],
       };
@@ -209,7 +237,7 @@ export async function PATCH(request: Request) {
       },
       include: {
         motorcycle: true,
-        assignedTo: true,
+        assignedTo: { select: { id: true, name: true, email: true, role: true } },
         interactions: {
           orderBy: { createdAt: 'desc' },
         },
@@ -219,11 +247,11 @@ export async function PATCH(request: Request) {
 
     if (stage && stage !== currentLead.stage) {
       await logAudit({
-        userId: assignedToId || null,
+        userId: auth.id,
         action: stage === 'PERDIDO' ? 'LEAD_LOSS' : 'LEAD_STAGE',
         entity: 'Lead',
         entityId: targetId,
-        details: `Lead "${currentLead.name}" movido de ${currentLead.stage} para ${stage}${stage === 'PERDIDO' && lossReason ? ` (Motivo: "${lossReason}")` : ''} por ${authorName || 'Vendedor'}.`,
+        details: `Lead "${currentLead.name}" movido de ${currentLead.stage} para ${stage}${stage === 'PERDIDO' && lossReason ? ` (Motivo: "${lossReason}")` : ''} por ${authorName}.`,
         ipAddress: extractClientIp(request),
       });
     }

@@ -13,7 +13,7 @@ async function run() {
       branchId: branch.id,
       name: 'Lucas Ribeiro',
       email: 'lucas.vendedor@therockmotos.com.br',
-      passwordHash: '123456',
+      passwordHash: 'PENDING_RESET', // não permite login; rode: node scripts/reset_passwords.js
       role: 'VENDEDOR',
       active: true,
     },
@@ -27,7 +27,7 @@ async function run() {
       branchId: branch.id,
       name: 'Mariana Dias',
       email: 'mariana.financeiro@therockmotos.com.br',
-      passwordHash: '123456',
+      passwordHash: 'PENDING_RESET', // não permite login; rode: node scripts/reset_passwords.js
       role: 'FINANCEIRO',
       active: true,
     },

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -54,12 +58,21 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
+    const { id } = await params;
     const body = await request.json();
     const { taskId, status, priority, description, costEstimate, dueDate } = body;
 
     if (!taskId) {
       return NextResponse.json({ error: 'ID da pendência não informado' }, { status: 400 });
+    }
+
+    const existing = await prisma.motorcycleTask.findFirst({ where: { id: taskId, motorcycleId: id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Pendência não encontrada' }, { status: 404 });
     }
 
     const updated = await prisma.motorcycleTask.update({
@@ -88,12 +101,21 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'ESTOQUE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get('taskId');
 
     if (!taskId) {
       return NextResponse.json({ error: 'ID da pendência não informado' }, { status: 400 });
+    }
+
+    const existing = await prisma.motorcycleTask.findFirst({ where: { id: taskId, motorcycleId: id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Pendência não encontrada' }, { status: 404 });
     }
 
     await prisma.motorcycleTask.delete({

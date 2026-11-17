@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const motorcycles = await prisma.motorcycle.findMany({
       include: {
@@ -123,7 +127,7 @@ export async function GET() {
     const pendenciasAbertas = tasks.filter(t => t.status !== 'CONCLUIDA' && t.status !== 'CANCELADA');
     const pendenciasUrgentes = pendenciasAbertas.filter(t => t.priority === 'URGENTE' || t.priority === 'ALTA');
 
-    return NextResponse.json({
+    const payload = {
       kpis: {
         totalMotos,
         motosDisponiveis,
@@ -148,7 +152,31 @@ export async function GET() {
       leads,
       financeiro: financialEntries,
       vendasRecentes: sales,
-    });
+    };
+
+    // Perfis sem acesso financeiro não recebem custos, margens, lucro nem contas.
+    if (!canViewFinancialCosts(auth.role)) {
+      return NextResponse.json({
+        ...payload,
+        kpis: {
+          ...payload.kpis,
+          capitalEstoque: null,
+          lucroPotencialEstoque: null,
+          margemMediaProjetada: null,
+          lucroRealizadoEstimado: null,
+          aReceber: null,
+          aPagar: null,
+        },
+        motosRecentes: payload.motosRecentes.map(
+          ({ totalCost: _t, margemBruta: _m, margin: _p, ...rest }) => rest
+        ),
+        financeiro: [],
+        vendasRecentes: payload.vendasRecentes.map(
+          ({ costBasis: _c, grossProfit: _g, ...rest }) => rest
+        ),
+      });
+    }
+    return NextResponse.json(payload);
   } catch (error) {
     console.error('Erro no dashboard API:', error);
     return NextResponse.json({ error: 'Erro ao carregar dados' }, { status: 500 });

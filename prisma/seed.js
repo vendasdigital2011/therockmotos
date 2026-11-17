@@ -30,7 +30,7 @@ async function main() {
       branchId: branch.id,
       name: 'Cassio Tenorio',
       email: 'cassio@therockmotos.com.br',
-      passwordHash: 'hash_seguro_mock',
+      passwordHash: 'PENDING_RESET', // não permite login; rode: node scripts/reset_passwords.js
       role: 'ADMIN',
     },
   });

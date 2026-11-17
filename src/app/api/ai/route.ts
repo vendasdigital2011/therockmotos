@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   generateListingDescription,
@@ -8,11 +9,17 @@ import {
 } from '@/lib/ai-engine';
 
 export async function GET(request: Request) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'alerts';
 
     if (action === 'run_automations') {
+      if (auth.role !== 'ADMIN' && auth.role !== 'GERENTE') {
+        return NextResponse.json({ error: 'Acesso negado para o seu perfil.' }, { status: 403 });
+      }
       const generated = await runAutomationsAndGenerateAlerts();
       const alerts = await prisma.systemAlert.findMany({
         where: { isRead: false },
@@ -39,9 +46,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
-    const { action, motorcycleId, leadId, question, userRole = 'VENDEDOR' } = body;
+    const { action, motorcycleId, leadId, question } = body;
+    // Role always comes from the verified session, never from the request body.
+    const userRole = auth.role;
 
     // 1. Gerador de Anúncio Comercial
     if (action === 'generate_listing') {
@@ -101,6 +113,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { alertId } = body;

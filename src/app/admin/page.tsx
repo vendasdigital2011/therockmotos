@@ -435,6 +435,7 @@ export default function AdminPage() {
   const [showModalUser, setShowModalUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<'ADMIN' | 'GERENTE' | 'VENDEDOR' | 'FINANCEIRO' | 'ESTOQUE'>('VENDEDOR');
 
   // Estados Financeiro & DRE (PRD 07)
@@ -574,6 +575,11 @@ export default function AdminPage() {
         fetch(`/api/financial?regime=${financeRegime}`),
         fetch('/api/documents'),
       ]);
+
+      if (resAuth.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
 
       if (resAuth.ok) {
         const authData = await resAuth.json();
@@ -1032,6 +1038,14 @@ export default function AdminPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login';
+    }
+  };
+
   const handleSwitchUser = async (userId: string) => {
     try {
       const res = await fetch('/api/auth/switch', {
@@ -1350,7 +1364,7 @@ export default function AdminPage() {
   // Usuários
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserName || !newUserEmail) return;
+    if (!newUserName || !newUserEmail || !newUserPassword) return;
 
     try {
       const res = await fetch('/api/users', {
@@ -1360,6 +1374,7 @@ export default function AdminPage() {
           name: newUserName,
           email: newUserEmail,
           role: newUserRole,
+          password: newUserPassword,
         }),
       });
 
@@ -1368,6 +1383,7 @@ export default function AdminPage() {
         setShowModalUser(false);
         setNewUserName('');
         setNewUserEmail('');
+        setNewUserPassword('');
         loadData();
       } else {
         const err = await res.json();
@@ -1743,13 +1759,14 @@ export default function AdminPage() {
                 )}
               </div>
               {!sidebarCollapsed && (
-                <Link
-                  href="/login"
-                  className="text-slate-500 hover:text-white p-1 rounded transition"
-                  title="Sair / Trocar"
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="text-slate-500 hover:text-white p-1 rounded transition cursor-pointer"
+                  title="Sair"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                </Link>
+                </button>
               )}
             </div>
           </div>
@@ -6990,6 +7007,19 @@ export default function AdminPage() {
                   placeholder="joao@therockmotos.com.br"
                   value={newUserEmail}
                   onChange={(e) => setNewUserEmail(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Senha Inicial * (mín. 8 caracteres)</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
                 />
               </div>

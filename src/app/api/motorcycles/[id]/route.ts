@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 
@@ -6,6 +7,9 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const moto = await prisma.motorcycle.findUnique({
@@ -38,6 +42,9 @@ export async function GET(
       return NextResponse.json({ error: 'Moto não encontrada' }, { status: 404 });
     }
 
+    if (!canViewFinancialCosts(auth.role)) {
+      return NextResponse.json({ ...moto, costs: [] });
+    }
     return NextResponse.json(moto);
   } catch (error) {
     console.error('Erro ao buscar moto:', error);
@@ -49,6 +56,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'ESTOQUE', 'VENDEDOR']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -58,10 +68,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Moto não encontrada' }, { status: 404 });
     }
 
+    // VENDEDOR may only move the status (e.g. reserve a bike), not edit price or data.
+    if (auth.role === 'VENDEDOR') {
+      const allowed = new Set(['status', 'statusReason', 'userName']);
+      const forbidden = Object.keys(body ?? {}).filter((k) => !allowed.has(k) && body[k] !== undefined);
+      if (forbidden.length > 0) {
+        return NextResponse.json({ error: 'Vendedor só pode alterar a situação da moto.' }, { status: 403 });
+      }
+    }
+
+    const userName = auth.name;
     const {
       status,
       statusReason,
-      userName,
       publicPrice,
       mileage,
       location,
@@ -88,6 +107,7 @@ export async function PATCH(
       });
 
       await logAudit({
+        userId: auth.id,
         action: 'STATUS_CHANGE',
         entity: 'Motorcycle',
         entityId: id,
@@ -99,6 +119,7 @@ export async function PATCH(
     // Se o preço de venda mudou, auditar (PRD 10)
     if (publicPrice !== undefined && Number(publicPrice) !== currentMoto.publicPrice) {
       await logAudit({
+        userId: auth.id,
         action: 'PRICE_CHANGE',
         entity: 'Motorcycle',
         entityId: id,
@@ -130,6 +151,9 @@ export async function PATCH(
       },
     });
 
+    if (!canViewFinancialCosts(auth.role)) {
+      return NextResponse.json({ ...updated, costs: [] });
+    }
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error('Erro ao atualizar moto:', error);
@@ -141,6 +165,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser(['ADMIN', 'GERENTE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     

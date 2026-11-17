@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { syncListingToPortal, ingestExternalLeadFromWebhook } from '@/lib/portal-adapters';
-import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const providers = await prisma.integrationProvider.findMany({
       include: {
@@ -51,7 +54,13 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({
-      providers,
+      // Never send integration secrets to the browser.
+      providers: providers.map(({ apiKey, apiSecret, webhookSecret, ...p }) => ({
+        ...p,
+        hasApiKey: Boolean(apiKey),
+        hasApiSecret: Boolean(apiSecret),
+        hasWebhookSecret: Boolean(webhookSecret),
+      })),
       recentLogs,
       externalLeads,
       metrics: {
@@ -67,19 +76,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { action, providerCode, motorcycleId, listingAction, payload } = body;
 
-    let userName = 'Operador';
-    try {
-      const cookieStore = await cookies();
-      const email = cookieStore.get('motoflow_session')?.value;
-      if (email) {
-        const u = await prisma.user.findUnique({ where: { email } });
-        if (u) userName = u.name;
-      }
-    } catch {}
+    const userName = auth.name;
 
     // 1. Sincronização manual ou disparo (PUBLISH, UPDATE, PAUSE, REMOVE)
     if (action === 'sync') {

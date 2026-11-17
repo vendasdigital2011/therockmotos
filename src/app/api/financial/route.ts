@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 
 export async function GET(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // RECEITA, DESPESA
@@ -180,6 +184,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(['ADMIN', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const {
@@ -224,6 +231,7 @@ export async function POST(request: Request) {
     });
 
     await logAudit({
+      userId: auth.id,
       action: 'FINANCIAL_ENTRY',
       entity: 'FinancialEntry',
       entityId: entry.id,
@@ -239,6 +247,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireUser(['ADMIN', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { entryId, action, financialAccountId, paidAmount, paymentDate } = body;
@@ -252,8 +263,18 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Lançamento não encontrado' }, { status: 404 });
     }
 
+    if (entry.status === 'PAGO' || entry.status === 'CANCELADO') {
+      return NextResponse.json(
+        { error: `Lançamento já está ${entry.status === 'PAGO' ? 'pago' : 'cancelado'}.` },
+        { status: 400 }
+      );
+    }
+
     if (action === 'BAIXA') {
       const finalPaidAmount = paidAmount !== undefined ? Number(paidAmount) : entry.amount;
+      if (!Number.isFinite(finalPaidAmount) || finalPaidAmount <= 0) {
+        return NextResponse.json({ error: 'Valor pago inválido' }, { status: 400 });
+      }
       const targetAccountId = financialAccountId || entry.financialAccountId;
 
       // Executar baixa atômica atualizando o título e o saldo da conta financeira
@@ -282,6 +303,7 @@ export async function PATCH(request: Request) {
       });
 
       await logAudit({
+        userId: auth.id,
         action: 'FINANCIAL_BAIXA',
         entity: 'FinancialEntry',
         entityId: entry.id,
@@ -299,6 +321,7 @@ export async function PATCH(request: Request) {
       });
 
       await logAudit({
+        userId: auth.id,
         action: 'FINANCIAL_CANCEL',
         entity: 'FinancialEntry',
         entityId: entry.id,
@@ -317,6 +340,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const auth = await requireUser(['ADMIN', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const entryId = searchParams.get('id');

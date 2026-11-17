@@ -10,7 +10,7 @@ async function main() {
       name: 'Webmotors',
       isActive: true,
       environment: 'HOMOLOGACAO',
-      apiKey: 'wm_live_sec_9941a82f',
+      apiKey: process.env.WEBMOTORS_API_KEY || '',
       settings: JSON.stringify({ autoSyncPhotos: true, highlightGold: true }),
     },
     {
@@ -18,7 +18,7 @@ async function main() {
       name: 'OLX Brasil',
       isActive: true,
       environment: 'HOMOLOGACAO',
-      apiKey: 'olx_pro_token_88120c',
+      apiKey: process.env.OLX_API_KEY || '',
       settings: JSON.stringify({ category: 'Motos', replyWithChatbot: true }),
     },
     {
@@ -26,7 +26,7 @@ async function main() {
       name: 'iCarros Itaú',
       isActive: true,
       environment: 'HOMOLOGACAO',
-      apiKey: 'ic_partner_77319e',
+      apiKey: process.env.ICARROS_API_KEY || '',
       settings: JSON.stringify({ itauFinancingBanner: true }),
     },
     {
@@ -34,7 +34,7 @@ async function main() {
       name: 'Mercado Livre Veículos',
       isActive: false,
       environment: 'HOMOLOGACAO',
-      apiKey: 'ml_app_sec_44109b',
+      apiKey: process.env.MERCADOLIVRE_API_KEY || '',
       settings: JSON.stringify({ listingType: 'gold_special' }),
     },
   ];

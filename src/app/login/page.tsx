@@ -3,27 +3,25 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bike, Lock, Mail, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
+import { Bike, Lock, Mail, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('cassio@therockmotos.com.br');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async (e?: React.FormEvent, customEmail?: string) => {
-    if (e) e.preventDefault();
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
     setLoading(true);
-
-    const targetEmail = customEmail || email;
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -40,10 +38,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickLogin = (demoEmail: string) => {
-    setEmail(demoEmail);
-    handleLogin(undefined, demoEmail);
-  };
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4 relative overflow-hidden">
@@ -115,36 +109,6 @@ export default function LoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Atalhos Rápidos para Testar Perfis (PRD 01) */}
-        <div className="mt-8 pt-6 border-t border-slate-100">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center mb-3">
-            Acesso Rápido por Perfil (Ambiente de Testes)
-          </span>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              onClick={() => handleQuickLogin('cassio@therockmotos.com.br')}
-              className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-purple-800 font-bold text-left transition flex items-center gap-2"
-            >
-              <UserCheck className="w-4 h-4 text-purple-600 shrink-0" />
-              <div>
-                <strong className="block text-[11px]">Cassio (Admin)</strong>
-                <span className="text-[9px] text-purple-600 font-normal">Acesso a Custos & Lucros</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleQuickLogin('lucas.vendedor@therockmotos.com.br')}
-              className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-left transition flex items-center gap-2"
-            >
-              <UserCheck className="w-4 h-4 text-slate-500 shrink-0" />
-              <div>
-                <strong className="block text-[11px]">Lucas (Vendedor)</strong>
-                <span className="text-[9px] text-slate-500 font-normal">Custos Bloqueados</span>
-              </div>
-            </button>
-          </div>
-        </div>
 
         <div className="mt-6 text-center">
           <Link

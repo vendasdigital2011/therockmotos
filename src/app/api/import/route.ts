@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { requireUser } from '@/lib/auth';
 import { validateVehicleImport, executeVehicleImportBatch } from '@/lib/data-importer';
-import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { action, rows } = body;
@@ -11,16 +13,11 @@ export async function POST(request: Request) {
     if (!Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: 'Nenhum dado fornecido para importação' }, { status: 400 });
     }
+    if (rows.length > 1000) {
+      return NextResponse.json({ error: 'Máximo de 1000 linhas por importação' }, { status: 400 });
+    }
 
-    let userName = 'Operador';
-    try {
-      const cookieStore = await cookies();
-      const email = cookieStore.get('motoflow_session')?.value;
-      if (email) {
-        const u = await prisma.user.findUnique({ where: { email } });
-        if (u) userName = u.name;
-      }
-    } catch {}
+    const userName = auth.name;
 
     // 1. Simulação / Validação Prévia (Dry Run)
     if (action === 'dry_run') {

@@ -1,35 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
-    // Verificação de RBAC (Apenas ADMIN e GERENTE podem ver logs de auditoria)
-    const cookieStore = await cookies();
-    const sessionEmail = cookieStore.get('motoflow_session')?.value;
-    let currentUser: any = null;
-
-    if (sessionEmail) {
-      currentUser = await prisma.user.findUnique({
-        where: { email: sessionEmail },
-        select: { id: true, name: true, role: true },
-      });
-    }
-
-    if (!currentUser) {
-      currentUser = await prisma.user.findFirst({
-        where: { role: 'ADMIN' },
-        select: { id: true, name: true, role: true },
-      });
-    }
-
-    if (currentUser?.role === 'VENDEDOR') {
-      return NextResponse.json(
-        { error: 'Acesso negado. Apenas Gestores e Administradores podem auditar os logs.' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const entity = searchParams.get('entity');

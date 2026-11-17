@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   issueFiscalDocument,
@@ -6,9 +7,11 @@ import {
   processBankWebhook,
   registerRenaveOperation,
 } from '@/lib/fiscal-bank-renave';
-import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const view = searchParams.get('view') || 'all';
@@ -56,19 +59,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { action } = body;
 
-    let userName = 'Operador';
-    try {
-      const cookieStore = await cookies();
-      const email = cookieStore.get('motoflow_session')?.value;
-      if (email) {
-        const u = await prisma.user.findUnique({ where: { email } });
-        if (u) userName = u.name;
-      }
-    } catch {}
+    const userName = auth.name;
 
     // 1. Emissão de NF-e
     if (action === 'issue_nfe') {

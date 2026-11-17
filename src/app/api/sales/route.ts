@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
+import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { autoRemoveSoldVehicleFromPortals } from '@/lib/portal-adapters';
 
 export async function GET() {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const sales = await prisma.sale.findMany({
       include: {
@@ -15,6 +19,11 @@ export async function GET() {
       },
       orderBy: { saleDate: 'desc' },
     });
+    if (!canViewFinancialCosts(auth.role)) {
+      return NextResponse.json(
+        sales.map(({ costBasis, grossProfit, ...rest }) => rest)
+      );
+    }
     return NextResponse.json(sales);
   } catch (error) {
     console.error('Erro ao listar vendas:', error);
@@ -23,6 +32,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const {
@@ -43,6 +55,7 @@ export async function POST(request: Request) {
       tradeInColor = 'Preta',
       tradeInMileage = 20000,
       notes = '',
+      sellerEmail,
     } = body;
 
     if (!motorcycleId || !customerName || !customerPhone || !salePrice) {
@@ -71,10 +84,19 @@ export async function POST(request: Request) {
     const numSalePrice = Number(salePrice);
     const grossProfit = numSalePrice - costBasis;
 
-    // 3. Localiza o primeiro vendedor ou admin disponível
-    const seller = await prisma.user.findFirst();
+    // 3. Vendedor: o próprio usuário logado. ADMIN/GERENTE podem lançar em nome de outro vendedor ativo.
+    let seller = await prisma.user.findUnique({ where: { id: auth.id } });
+    if (
+      auth.role !== 'VENDEDOR' &&
+      typeof sellerEmail === 'string' &&
+      sellerEmail.trim().toLowerCase() !== auth.email
+    ) {
+      seller = await prisma.user.findFirst({
+        where: { email: sellerEmail.trim().toLowerCase(), active: true },
+      });
+    }
     if (!seller) {
-      return NextResponse.json({ error: 'Nenhum usuário vendedor ativo encontrado' }, { status: 400 });
+      return NextResponse.json({ error: 'Vendedor não encontrado ou inativo' }, { status: 400 });
     }
 
     // 4. Executa a transação completa
@@ -183,7 +205,7 @@ export async function POST(request: Request) {
     });
 
     await logAudit({
-      userId: seller.id,
+      userId: auth.id,
       action: 'SALE_CREATE',
       entity: 'Sale',
       entityId: result.sale.id,
@@ -198,6 +220,13 @@ export async function POST(request: Request) {
       console.warn('Aviso: falha na despublicação de portais após venda:', portalErr);
     }
 
+    if (!canViewFinancialCosts(auth.role)) {
+      const { costBasis: _c, grossProfit: _g, ...sale } = result.sale;
+      return NextResponse.json(
+        { ...result, sale, moto: { ...result.moto, costs: [] } },
+        { status: 201 }
+      );
+    }
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
     console.error('Erro ao concretizar venda:', error);

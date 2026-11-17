@@ -71,6 +71,25 @@ export interface FinancialContractData {
   reservationDeadlineDays?: number;
 }
 
+// Escapes text before it is placed into contract HTML. The HTML is stored and
+// later rendered with dangerouslySetInnerHTML, so any customer-provided field
+// (name, address, plate...) must be escaped to prevent stored XSS.
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+function escapeFields<T extends object>(obj: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = typeof v === 'string' ? escapeHtml(v) : v;
+  }
+  return out as T;
+}
+
 const formatCurrency = (val: number) => {
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
@@ -98,6 +117,10 @@ export function generateSaleContractHtml(
   financial: FinancialContractData,
   sellerName = 'The Rock Moto Shop'
 ): string {
+  buyer = escapeFields(buyer);
+  vehicle = escapeFields(vehicle);
+  financial = escapeFields(financial);
+  sellerName = escapeHtml(sellerName);
   return `
   <div class="contract-container">
     <div class="contract-header">
@@ -211,6 +234,8 @@ export function generateWarrantyTermHtml(
   vehicle: VehicleContractData,
   deliveryDate?: string
 ): string {
+  buyer = escapeFields(buyer);
+  vehicle = escapeFields(vehicle);
   return `
   <div class="contract-container">
     <div class="contract-header">
@@ -298,6 +323,9 @@ export function generateDepositReceiptHtml(
   vehicle: VehicleContractData,
   financial: FinancialContractData
 ): string {
+  buyer = escapeFields(buyer);
+  vehicle = escapeFields(vehicle);
+  financial = escapeFields(financial);
   const deposit = financial.depositAmount || financial.entryAmount || 1000;
   const deadlineDays = financial.reservationDeadlineDays || 5;
   const remaining = financial.salePrice - deposit;
@@ -377,6 +405,8 @@ export function generateTrafficResponsibilityHtml(
   vehicle: VehicleContractData,
   transferDate?: string
 ): string {
+  buyer = escapeFields(buyer);
+  vehicle = escapeFields(vehicle);
   return `
   <div class="contract-container">
     <div class="contract-header">

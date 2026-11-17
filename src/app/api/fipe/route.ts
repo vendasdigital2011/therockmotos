@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 
 // Cache em memória para não sobrecarregar a API pública
 let cachedBrands: { codigo: string; nome: string }[] | null = null;
 let lastBrandsFetch = 0;
 
 export async function GET(request: Request) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'brands';

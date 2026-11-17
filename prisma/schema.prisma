@@ -1,6 +1,9 @@
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  // Supabase: DATABASE_URL = pooler (porta 6543, ?pgbouncer=true) para o app;
+  // DIRECT_URL = conexão direta (porta 5432) para migrations.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
