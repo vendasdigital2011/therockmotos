@@ -124,6 +124,13 @@ export async function POST(request: Request) {
       acquisitionCost,
     } = body;
 
+    const missing = ['brand', 'model', 'yearMfg', 'yearModel', 'color', 'publicPrice'].filter(
+      (f) => body?.[f] === undefined || body?.[f] === null || body?.[f] === ''
+    );
+    if (missing.length) {
+      return NextResponse.json({ error: `Campos obrigatórios ausentes: ${missing.join(', ')}` }, { status: 400 });
+    }
+
     // Pré-cadastro pode não ter placa: salva como null, sem inventar identificador.
     const cleanPlate = typeof plate === 'string' && plate.trim() ? plate.toUpperCase().trim() : null;
 
