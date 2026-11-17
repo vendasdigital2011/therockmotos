@@ -4,16 +4,34 @@ import { cookies } from 'next/headers';
 import { verifyPassword, verifyDummy } from '@/lib/password';
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/session';
 import { logAudit, extractClientIp } from '@/lib/audit';
-import { isRateLimited, recordHit, clearRate, trustedClientIp } from '@/lib/rate-limit';
+import { reserve, release, trustedClientIp } from '@/lib/rate-limit';
 
 const INVALID = 'E-mail ou senha inválidos.';
 const WINDOW_MS = 15 * 60 * 1000;
-const MAX_FAILS_PER_ACCOUNT = 10;
-const MAX_FAILS_PER_IP = 30;
+// Camadas de limite (tentativas em 15 min):
+const LIMIT_PAIR = 10; // conta + IP: barra adivinhação vinda de um IP
+const LIMIT_ACCOUNT = 30; // conta, de qualquer IP: barra quem troca de IP
+const LIMIT_IP = 100; // IP, em todas as contas: barra espalhamento de senhas
 
-// Só falhas contam. A senha correta entra sempre, mesmo com a conta com
-// tentativas erradas registradas, então ninguém consegue trancar outra pessoa
-// fora do sistema apenas errando a senha dela.
+type Reservation = { key: string };
+
+// Cada tentativa é reservada ANTES de checar a senha (síncrono, sem corrida).
+// Login correto desfaz a reserva (não conta como falha). Login errado mantém.
+// Se qualquer camada já estiver no limite, nada é verificado, nem a senha correta.
+function reserveAll(keys: { key: string; limit: number }[]): { ok: true; held: Reservation[] } | { ok: false; retryAfterSec: number } {
+  const held: Reservation[] = [];
+  for (const { key, limit } of keys) {
+    const r = reserve(key, limit, WINDOW_MS);
+    if (!r.ok) {
+      // Desfaz o que já foi reservado nesta tentativa.
+      for (const h of held) release(h.key);
+      return { ok: false, retryAfterSec: r.retryAfterSec };
+    }
+    held.push({ key });
+  }
+  return { ok: true, held };
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -25,19 +43,18 @@ export async function POST(request: Request) {
 
     const emailKey = email.trim().toLowerCase();
     const ip = trustedClientIp(request);
-    const ipKey = 'login-fail-ip:' + ip;
-    // Trava por conta + IP: errar a senha de outra pessoa de outro IP não a tranca.
-    const acctKey = 'login-fail-user:' + emailKey + '@' + ip;
+    const keys = [
+      { key: `login-acct:${emailKey}`, limit: LIMIT_ACCOUNT },
+      { key: `login-pair:${emailKey}@${ip}`, limit: LIMIT_PAIR },
+      // Sem IP identificado, não há contador por IP (evita um balde compartilhado "unknown").
+      ...(ip !== 'unknown' ? [{ key: `login-ip:${ip}`, limit: LIMIT_IP }] : []),
+    ];
 
-    // Limite ANTES de checar a senha: com a conta travada, nenhuma tentativa
-    // passa, nem a correta. Sem isso, quem adivinha a senha entra mesmo travado.
-    const byIp = isRateLimited(ipKey, MAX_FAILS_PER_IP);
-    const byAccount = isRateLimited(acctKey, MAX_FAILS_PER_ACCOUNT);
-    if (byIp.limited || byAccount.limited) {
-      const retry = Math.max(byIp.retryAfterSec, byAccount.retryAfterSec);
+    const reservation = reserveAll(keys);
+    if (!reservation.ok) {
       return NextResponse.json(
         { error: 'Muitas tentativas de login. Aguarde alguns minutos.' },
-        { status: 429, headers: { 'Retry-After': String(retry) } }
+        { status: 429, headers: { 'Retry-After': String(reservation.retryAfterSec) } }
       );
     }
 
@@ -50,13 +67,12 @@ export async function POST(request: Request) {
     const ok = user ? verifyPassword(password, user.passwordHash) : verifyDummy(password);
 
     if (!ok || !user) {
-      recordHit(ipKey, WINDOW_MS);
-      recordHit(acctKey, WINDOW_MS);
+      // Falha: a reserva fica contada.
       return NextResponse.json({ error: INVALID }, { status: 401 });
     }
 
-    // Senha correta: zera as falhas da conta e segue.
-    clearRate(acctKey);
+    // Sucesso: a tentativa não conta como falha.
+    for (const h of reservation.held) release(h.key);
 
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, createSessionToken(user.id, user.sessionVersion), sessionCookieOptions());

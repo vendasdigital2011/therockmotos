@@ -66,3 +66,15 @@ export function trustedClientIp(request: Request | NextRequest): string {
   }
   return request.headers.get('x-real-ip') || 'unknown';
 }
+
+// Reserva uma tentativa de forma síncrona (checa e conta no mesmo passo, sem await
+// no meio), então requisições simultâneas não passam juntas do limite.
+export function reserve(key: string, limit: number, windowMs: number): { ok: boolean; retryAfterSec: number } {
+  return rateLimit(key, limit, windowMs);
+}
+
+// Desfaz uma reserva (ex.: login correto não deve contar como falha).
+export function release(key: string): void {
+  const current = buckets.get(key);
+  if (current && current.count > 0) current.count -= 1;
+}
