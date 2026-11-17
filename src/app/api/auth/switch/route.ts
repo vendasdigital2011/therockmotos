@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, createSessionToken(user.id), sessionCookieOptions());
+    cookieStore.set(SESSION_COOKIE, createSessionToken(user.id, user.sessionVersion), sessionCookieOptions());
 
     await logAudit({
       userId: auth.id,

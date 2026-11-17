@@ -45,6 +45,7 @@ model User {
   passwordHash   String
   role           String       @default("VENDEDOR") // ADMIN, GERENTE, VENDEDOR, FINANCEIRO, ESTOQUE
   active         Boolean      @default(true)
+  sessionVersion Int          @default(0) // incrementado no logout: invalida cookies antigos
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

@@ -147,7 +147,8 @@ export async function POST(request: Request) {
 
       // Se houver moto recebida na troca, insere automaticamente no estoque como EM_PREPARACAO
       let createdTradeInMoto = null;
-      if (paymentType === 'TROCA' && tradeInAmount > 0 && tradeInPlate && tradeInModel) {
+      const tradeInValue = Number(tradeInAmount) > 0 ? Number(tradeInAmount) : 0;
+      if (tradeInValue > 0 && tradeInPlate && tradeInModel) {
         const cleanPlate = tradeInPlate.toUpperCase().trim();
         createdTradeInMoto = await tx.motorcycle.create({
           data: {
@@ -176,19 +177,36 @@ export async function POST(request: Request) {
         });
       }
 
-      // Gera o título a receber no Financeiro
-      await tx.financialEntry.create({
-        data: {
-          motorcycleId: moto.id,
-          type: 'RECEITA',
-          category: 'VENDA_MOTO',
-          description: `Venda ${moto.brand} ${moto.model} · Cliente ${customer.name}`,
-          amount: numSalePrice,
-          dueDate: new Date(),
-          paymentDate: new Date(),
-          status: 'PAGO',
-        },
-      });
+      // Títulos da venda: o recebimento em dinheiro é o preço menos a troca;
+      // a moto recebida na troca vira entrada PENDENTE de mesmo valor (soma = preço).
+      const cashAmount = numSalePrice - tradeInValue;
+      if (cashAmount > 0) {
+        await tx.financialEntry.create({
+          data: {
+            motorcycleId: moto.id,
+            type: 'RECEITA',
+            category: 'VENDA_MOTO',
+            description: `Venda ${moto.brand} ${moto.model} · Cliente ${customer.name}`,
+            amount: cashAmount,
+            dueDate: new Date(),
+            paymentDate: new Date(),
+            status: 'PAGO',
+          },
+        });
+      }
+      if (tradeInValue > 0) {
+        await tx.financialEntry.create({
+          data: {
+            motorcycleId: moto.id,
+            type: 'RECEITA',
+            category: 'VENDA_MOTO',
+            description: `Entrada pendente: moto recebida na troca (${tradeInModel || 'sem modelo'} ${tradeInPlate ? tradeInPlate.toUpperCase().trim() : 'sem placa'})`,
+            amount: tradeInValue,
+            dueDate: new Date(),
+            status: 'PENDENTE',
+          },
+        });
+      }
 
       // Se houver lead com essa moto e telefone, marca como GANHO
       const relatedLead = await tx.lead.findFirst({

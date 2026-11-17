@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { isValidDocument, maskDocument } from '@/lib/documents-br';
+
+// Perfis que veem o CPF/CNPJ completo. Os demais veem só os 2 últimos dígitos (LGPD).
+const SEE_FULL_DOCUMENT = ['ADMIN', 'GERENTE', 'FINANCEIRO'];
 
 export async function GET(request: Request) {
   const auth = await requireUser();
@@ -50,7 +54,8 @@ export async function GET(request: Request) {
       orderBy: { name: 'asc' },
     });
 
-    return NextResponse.json(people);
+    const canSeeDoc = SEE_FULL_DOCUMENT.includes(auth.role);
+    return NextResponse.json(canSeeDoc ? people : people.map((p) => ({ ...p, document: maskDocument(p.document) })));
   } catch (error: any) {
     console.error('Erro ao listar pessoas:', error);
     return NextResponse.json({ error: 'Erro ao listar pessoas' }, { status: 500 });
@@ -85,7 +90,10 @@ export async function POST(request: Request) {
 
     // Detecção de duplicidades (PRD 02 Critério de aceite)
     const cleanPhone = phone.trim();
-    const cleanDoc = document ? document.trim() : null;
+    const cleanDoc = document ? String(document).trim() : null;
+    if (cleanDoc && !isValidDocument(cleanDoc)) {
+      return NextResponse.json({ error: 'CPF/CNPJ inválido. Verifique os números digitados.' }, { status: 400 });
+    }
 
     if (cleanDoc) {
       const existingDoc = await prisma.customer.findFirst({

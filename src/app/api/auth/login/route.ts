@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { verifyPassword, verifyDummy } from '@/lib/password';
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/session';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { rateLimit } from '@/lib/rate-limit';
 
 const INVALID = 'E-mail ou senha inválidos.';
 
@@ -14,6 +15,18 @@ export async function POST(request: Request) {
 
     if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       return NextResponse.json({ error: 'Informe e-mail e senha.' }, { status: 400 });
+    }
+
+    // Limite contra força bruta: por IP (20) e por conta (10) a cada 15 min.
+    const ip = extractClientIp(request);
+    const byIp = rateLimit(`login-ip:${ip}`, 20, 15 * 60 * 1000);
+    const byAccount = rateLimit(`login-user:${String(email).trim().toLowerCase()}`, 10, 15 * 60 * 1000);
+    if (!byIp.ok || !byAccount.ok) {
+      const retry = Math.max(byIp.retryAfterSec, byAccount.retryAfterSec);
+      return NextResponse.json(
+        { error: 'Muitas tentativas de login. Aguarde alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(retry) } }
+      );
     }
 
     const user = await prisma.user.findFirst({
@@ -28,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, createSessionToken(user.id), sessionCookieOptions());
+    cookieStore.set(SESSION_COOKIE, createSessionToken(user.id, user.sessionVersion), sessionCookieOptions());
 
     await logAudit({
       userId: user.id,

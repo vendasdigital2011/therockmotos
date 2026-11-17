@@ -29,7 +29,8 @@ export async function getCurrentUser(): Promise<UserSession | null> {
       where: { id: payload.uid, active: true },
       include: { branch: true },
     });
-    if (!user) return null;
+    // Sessão revogada (logout) ou de versão antiga: não vale mais.
+    if (!user || payload.v !== user.sessionVersion) return null;
 
     return {
       id: user.id,

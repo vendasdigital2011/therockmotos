@@ -9,6 +9,7 @@ export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
 
 interface SessionPayload {
   uid: string;
+  v: number; // versão da sessão do usuário; confere com User.sessionVersion
   exp: number; // unix seconds
 }
 
@@ -24,9 +25,10 @@ function sign(data: string): string {
   return crypto.createHmac('sha256', getSecret()).update(data).digest('base64url');
 }
 
-export function createSessionToken(userId: string): string {
+export function createSessionToken(userId: string, sessionVersion: number): string {
   const payload: SessionPayload = {
     uid: userId,
+    v: sessionVersion,
     exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE,
   };
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -45,7 +47,7 @@ export function verifySessionToken(token: string | undefined | null): SessionPay
   }
   try {
     const payload = JSON.parse(Buffer.from(data, 'base64url').toString()) as SessionPayload;
-    if (typeof payload.uid !== 'string' || typeof payload.exp !== 'number') return null;
+    if (typeof payload.uid !== 'string' || typeof payload.exp !== 'number' || typeof payload.v !== 'number') return null;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {
