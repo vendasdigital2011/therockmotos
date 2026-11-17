@@ -1,0 +1,189 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const isPublicOnly = searchParams.get('public') === 'true';
+
+    if (isPublicOnly) {
+      // Retorna apenas dados públicos para a vitrine (sem custos internos e sem dados sensíveis como chassi/renavam)
+      const motorcycles = await prisma.motorcycle.findMany({
+        where: {
+          isPublic: true,
+          status: { in: ['DISPONIVEL', 'RESERVADA'] },
+        },
+        select: {
+          id: true,
+          brand: true,
+          model: true,
+          version: true,
+          yearMfg: true,
+          yearModel: true,
+          color: true,
+          mileage: true,
+          displacement: true,
+          fuel: true,
+          condition: true,
+          status: true,
+          publicPrice: true,
+          fipeValue: true,
+          features: true,
+          description: true,
+          imageUrl: true,
+          images: true,
+          isFeatured: true,
+        },
+        orderBy: { entryDate: 'desc' },
+      });
+      return NextResponse.json(motorcycles);
+    }
+
+    // Painel interno: retorna dados completos com custos, tarefas/pendências, fornecedor e histórico
+    const motorcycles = await prisma.motorcycle.findMany({
+      include: {
+        costs: {
+          include: {
+            supplier: {
+              select: { id: true, name: true, tradeName: true, roles: true, phone: true },
+            },
+          },
+          orderBy: { date: 'desc' },
+        },
+        tasks: {
+          include: {
+            partner: {
+              select: { id: true, name: true, tradeName: true, roles: true, phone: true },
+            },
+          },
+          orderBy: [{ status: 'asc' }, { dueDate: 'asc' }],
+        },
+        supplier: {
+          select: { id: true, name: true, tradeName: true, document: true, phone: true },
+        },
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+      orderBy: { entryDate: 'desc' },
+    });
+
+    return NextResponse.json(motorcycles);
+  } catch (error) {
+    console.error('Erro ao listar motos:', error);
+    return NextResponse.json({ error: 'Erro ao listar motos' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const branch = await prisma.branch.findFirst();
+
+    if (!branch) {
+      return NextResponse.json({ error: 'Nenhuma filial cadastrada' }, { status: 400 });
+    }
+
+    const {
+      plate,
+      brand,
+      model,
+      version,
+      yearMfg,
+      yearModel,
+      color,
+      mileage,
+      fuel = 'Gasolina',
+      displacement,
+      chassis,
+      renavam,
+      ownership = 'PROPRIA',
+      condition = 'SEMINOVA',
+      status = 'DISPONIVEL',
+      publicPrice,
+      fipeCode,
+      fipeValue,
+      fipeRefMonth,
+      location = 'Showroom',
+      imageUrl,
+      images,
+      features,
+      description = '',
+      supplierId,
+      acquisitionCost,
+    } = body;
+
+    const cleanPlate = plate.toUpperCase().trim();
+
+    // Validar se placa já existe
+    const existing = await prisma.motorcycle.findUnique({
+      where: { plate: cleanPlate },
+    });
+    if (existing) {
+      return NextResponse.json({ error: 'Já existe um veículo cadastrado com esta placa.' }, { status: 400 });
+    }
+
+    const moto = await prisma.motorcycle.create({
+      data: {
+        branchId: branch.id,
+        plate: cleanPlate,
+        brand,
+        model,
+        version,
+        yearMfg: Number(yearMfg),
+        yearModel: Number(yearModel),
+        color,
+        mileage: Number(mileage),
+        fuel,
+        displacement: displacement ? Number(displacement) : null,
+        chassis: chassis || null,
+        renavam: renavam || null,
+        ownership,
+        condition,
+        status,
+        publicPrice: Number(publicPrice),
+        fipeCode: fipeCode || null,
+        fipeValue: fipeValue ? Number(fipeValue) : null,
+        fipeRefMonth: fipeRefMonth || null,
+        location,
+        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?q=80&w=800&auto=format&fit=crop',
+        images: images ? (typeof images === 'string' ? images : JSON.stringify(images)) : null,
+        features: features ? (typeof features === 'string' ? features : JSON.stringify(features)) : null,
+        description,
+        supplierId: supplierId || null,
+        costs: acquisitionCost
+          ? {
+              create: [
+                {
+                  category: 'AQUISICAO',
+                  description: 'Valor de compra / aquisição do veículo',
+                  amount: Number(acquisitionCost),
+                  supplierId: supplierId || null,
+                },
+              ],
+            }
+          : undefined,
+        statusHistory: {
+          create: [
+            {
+              fromStatus: 'AGUARDANDO_ENTRADA',
+              toStatus: status,
+              reason: 'Cadastro inicial de entrada no sistema.',
+              userName: 'Usuário do Sistema',
+            },
+          ],
+        },
+      },
+      include: {
+        costs: true,
+        tasks: true,
+        statusHistory: true,
+      },
+    });
+
+    return NextResponse.json(moto, { status: 201 });
+  } catch (error: any) {
+    console.error('Erro ao cadastrar moto:', error);
+    return NextResponse.json({ error: error.message || 'Erro ao cadastrar moto' }, { status: 500 });
+  }
+}

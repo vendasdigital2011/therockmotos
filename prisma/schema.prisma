@@ -1,0 +1,569 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  document  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  branches  Branch[]
+  users     User[]
+}
+
+model Branch {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  city           String
+  state          String
+  phone          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  motorcycles    Motorcycle[]
+  users          User[]
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  branchId       String?
+  branch         Branch?      @relation(fields: [branchId], references: [id])
+  name           String
+  email          String       @unique
+  passwordHash   String
+  role           String       @default("VENDEDOR") // ADMIN, GERENTE, VENDEDOR, FINANCEIRO, ESTOQUE
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  leads          Lead[]
+  sales          Sale[]
+  auditLogs      AuditLog[]
+  conversations  AiConversation[]
+}
+
+model Motorcycle {
+  id             String       @id @default(uuid())
+  branchId       String
+  branch         Branch       @relation(fields: [branchId], references: [id])
+  plate          String       @unique
+  brand          String
+  model          String
+  version        String?
+  yearMfg        Int
+  yearModel      Int
+  color          String
+  mileage        Int
+  fuel           String       @default("Gasolina")
+  displacement   Int?         // Cilindrada em cc
+  chassis        String?
+  renavam        String?
+  ownership      String       @default("PROPRIA") // PROPRIA, CONSIGNADA, TERCEIRO
+  condition      String       @default("SEMINOVA") // NOVA, SEMINOVA, USADA
+  status         String       @default("DISPONIVEL") // AVALIACAO, AGUARDANDO_ENTRADA, EM_PREPARACAO, DISPONIVEL, RESERVADA, VENDIDA, ARQUIVADA
+  publicPrice    Float
+  fipeCode       String?
+  fipeValue      Float?
+  fipeRefMonth   String?
+  location       String?      @default("Showroom") // Showroom, Oficina Parceira, Pátio/Galpão, Estética
+  imageUrl       String?      // Capa principal
+  images         String?      // JSON array de URLs das fotos
+  features       String?      // Opcionais/características (JSON ou vírgula)
+  description    String?
+  isFeatured     Boolean      @default(false)
+  isPublic       Boolean      @default(true)
+  entryDate      DateTime     @default(now())
+  supplierId     String?
+  supplier       Customer?    @relation("VehicleSupplier", fields: [supplierId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  costs          MotorcycleCost[]
+  tasks          MotorcycleTask[]
+  statusHistory  MotorcycleStatusHistory[]
+  leads          Lead[]
+  sales          Sale[]
+  financialEntries FinancialEntry[]
+  contracts        DocumentContract[]
+  portalListings   PortalListing[]
+  fiscalDocuments  FiscalDocument[]
+  renaveOperations RenaveOperation[]
+  serviceOrders    ServiceOrder[]
+}
+
+model MotorcycleCost {
+  id            String     @id @default(uuid())
+  motorcycleId  String
+  motorcycle    Motorcycle @relation(fields: [motorcycleId], references: [id], onDelete: Cascade)
+  category      String     // AQUISICAO, OFICINA_MECANICA, PECAS, ESTETICA, DOCUMENTACAO, TRANSPORTE, OUTROS
+  description   String
+  amount        Float
+  isCredit      Boolean    @default(false) // Se true, deduz do custo real
+  status        String     @default("PAGO") // PREVISTO, APROVADO, PAGO, CANCELADO
+  supplierId    String?
+  supplier      Customer?  @relation(fields: [supplierId], references: [id])
+  date          DateTime   @default(now())
+  createdByName String?
+  createdAt     DateTime   @default(now())
+}
+
+model MotorcycleTask {
+  id           String     @id @default(uuid())
+  motorcycleId String
+  motorcycle   Motorcycle @relation(fields: [motorcycleId], references: [id], onDelete: Cascade)
+  type         String     // REVISAO_MECANICA, TROCA_OLEO, PNEUS, ESTETICA, DOCUMENTAL, LAUDO, OUTROS
+  title        String
+  description  String?
+  priority     String     @default("MEDIA") // BAIXA, MEDIA, ALTA, URGENTE
+  status       String     @default("ABERTA") // ABERTA, EM_ANDAMENTO, AGUARDANDO_TERCEIRO, CONCLUIDA, CANCELADA
+  assignedTo   String?
+  partnerId    String?
+  partner      Customer?  @relation(fields: [partnerId], references: [id])
+  dueDate      DateTime?
+  costEstimate Float?
+  completedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model MotorcycleStatusHistory {
+  id           String     @id @default(uuid())
+  motorcycleId String
+  motorcycle   Motorcycle @relation(fields: [motorcycleId], references: [id], onDelete: Cascade)
+  fromStatus   String
+  toStatus     String
+  reason       String?
+  userName     String?
+  createdAt    DateTime   @default(now())
+}
+
+model Customer {
+  id           String   @id @default(uuid())
+  name         String
+  tradeName    String?  // Nome Fantasia (para PJ)
+  personType   String   @default("PF") // PF ou PJ
+  roles        String   @default("CLIENTE") // CLIENTE, FORNECEDOR, OFICINA, DESPACHANTE, PARCEIRO
+  email        String?
+  phone        String
+  document     String?  // CPF ou CNPJ
+  postalCode   String?
+  address      String?
+  neighborhood String?
+  city         String?
+  state        String?
+  notes        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  leads               Lead[]
+  sales               Sale[]
+  suppliedMotorcycles Motorcycle[]     @relation("VehicleSupplier")
+  suppliedCosts       MotorcycleCost[]
+  partnerTasks        MotorcycleTask[]
+  financialEntries    FinancialEntry[]
+  fiscalDocuments     FiscalDocument[]
+  serviceOrders       ServiceOrder[]
+}
+
+model Lead {
+  id             String            @id @default(uuid())
+  customerId     String?
+  customer       Customer?         @relation(fields: [customerId], references: [id])
+  motorcycleId   String?
+  motorcycle     Motorcycle?       @relation(fields: [motorcycleId], references: [id])
+  assignedToId   String?
+  assignedTo     User?             @relation(fields: [assignedToId], references: [id])
+  name           String
+  phone          String
+  email          String?
+  message        String?
+  source         String            @default("VITRINE_SITE") // VITRINE_SITE, WHATSAPP, OLX, WEBMOTORS, PRESENCIAL
+  stage          String            @default("NOVO") // NOVO, CONTATO, VISITA_AGENDADA, PROPOSTA, GANHO, PERDIDO
+  lossReason     String?           // Exigido quando stage = PERDIDO (PRD 08)
+  budget         Float?            // Orçamento previsto pelo cliente
+  nextAction     String?           // Próxima ação comercial
+  nextActionDate DateTime?         // Prazo da próxima ação
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  interactions   LeadInteraction[]
+  activities     LeadActivity[]
+}
+
+model LeadInteraction {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        String   @default("WHATSAPP") // WHATSAPP, LIGACAO, VISITA_SHOWROOM, PROPOSTA, TEST_RIDE, ANOTACOES
+  description String
+  authorName  String?  @default("Vendedor")
+  createdAt   DateTime @default(now())
+}
+
+model LeadActivity {
+  id          String    @id @default(uuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title       String
+  dueDate     DateTime
+  status      String    @default("PENDENTE") // PENDENTE, CONCLUIDA, ATRASADA
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Sale {
+  id              String     @id @default(uuid())
+  motorcycleId    String     @unique
+  motorcycle      Motorcycle @relation(fields: [motorcycleId], references: [id])
+  customerId      String
+  customer        Customer   @relation(fields: [customerId], references: [id])
+  sellerId        String
+  seller          User       @relation(fields: [sellerId], references: [id])
+  saleDate        DateTime   @default(now())
+  salePrice       Float
+  costBasis       Float
+  grossProfit     Float
+  paymentType     String     // A_VISTA, FINANCIAMENTO, TROCA, CONSIGNACAO
+  entryAmount     Float?     @default(0)
+  financedAmount  Float?     @default(0)
+  tradeInAmount   Float?     @default(0)
+  tradeInPlate    String?
+  tradeInModel    String?
+  notes           String?
+  createdAt       DateTime   @default(now())
+
+  contracts       DocumentContract[]
+  fiscalDocuments FiscalDocument[]
+}
+
+model DocumentContract {
+  id              String      @id @default(uuid())
+  type            String      // CONTRATO_VENDA, TERMO_GARANTIA, RECIBO_SINAL, TERMO_RESPONSABILIDADE
+  title           String
+  saleId          String?
+  motorcycleId    String?
+  customerId      String?
+  sellerId        String?
+  contentHtml     String      // Conteúdo HTML pré-formatado pronto para visualização e impressão
+  status          String      @default("GERADO") // GERADO, ASSINADO, ARQUIVADO
+  signDate        DateTime?
+  witness1Name    String?
+  witness1Doc     String?
+  witness2Name    String?
+  witness2Doc     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  sale            Sale?       @relation(fields: [saleId], references: [id])
+  motorcycle      Motorcycle? @relation(fields: [motorcycleId], references: [id])
+}
+
+model FinancialAccount {
+  id             String           @id @default(uuid())
+  name           String           // Ex: Itaú PJ, Santander, Caixa Físico Showroom
+  type           String           @default("BANCO") // BANCO, CAIXA_FISICO
+  bankName       String?
+  accountNumber  String?
+  agency         String?
+  currentBalance Float            @default(0)
+  color          String?          @default("#6d3df5")
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  entries        FinancialEntry[]
+}
+
+model FinancialEntry {
+  id                 String            @id @default(uuid())
+  motorcycleId       String?
+  motorcycle         Motorcycle?       @relation(fields: [motorcycleId], references: [id])
+  financialAccountId String?
+  financialAccount   FinancialAccount? @relation(fields: [financialAccountId], references: [id])
+  customerId         String?
+  customer           Customer?         @relation(fields: [customerId], references: [id])
+  type               String            // RECEITA, DESPESA
+  category           String            // VENDA_MOTO, COMISSAO_FINANCIAMENTO, AQUISICAO_VEICULO, OFICINA_MECANICA, PECAS, ESTETICA, DOCUMENTACAO, ALUGUEL, DESPESA_OPERACIONAL, COMISSAO, MARKETING_ANUNCIOS, IMPOSTOS
+  costCenter         String?           @default("SHOWROOM") // SHOWROOM, OFICINA, ADMINISTRATIVO, COMERCIAL
+  description        String
+  amount             Float
+  paidAmount         Float?
+  discount           Float?            @default(0)
+  interest           Float?            @default(0)
+  paymentMethod      String?           @default("PIX") // PIX, TED, BOLETO, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO
+  dueDate            DateTime
+  paymentDate        DateTime?
+  competenceDate     DateTime          @default(now())
+  status             String            @default("PENDENTE") // PENDENTE, PAGO, CANCELADO, ATRASADO
+  notes              String?
+  bankCharges        BankCharge[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String   // CREATE, UPDATE, DELETE, ACCESS_SENSITIVE
+  entity     String   // Motorcycle, Cost, User, Sale
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
+model AiConversation {
+  id        String      @id @default(uuid())
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id])
+  title     String      @default("Nova Consulta")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  messages  AiMessage[]
+}
+
+model AiMessage {
+  id             String         @id @default(uuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String         // user, assistant, system
+  content        String
+  tokensUsed     Int?           @default(0)
+  createdAt      DateTime       @default(now())
+}
+
+model SystemAlert {
+  id        String   @id @default(uuid())
+  type      String   // ESTOQUE_PARADO, LEAD_SEM_CONTATO, MARGEM_BAIXA, TAREFA_ATRASADA, TITULO_VENCIDO
+  severity  String   @default("WARNING") // INFO, WARNING, CRITICAL
+  title     String
+  message   String
+  entity    String?  // Motorcycle, Lead, FinancialEntry, MotorcycleTask
+  entityId  String?
+  isRead    Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now())
+}
+
+model AutomationRule {
+  id          String   @id @default(uuid())
+  name        String
+  triggerType String   // ESTOQUE_DIAS, LEAD_TEMPO, MARGEM_MINIMA
+  condition   String   // JSON com parâmetros (ex: { "days": 30 })
+  actionType  String   // CREATE_ALERT, NOTIFY_USER, SUGGEST_DISCOUNT
+  isActive    Boolean  @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==========================================
+// PRD 11 — INTEGRAÇÃO COM PORTAIS
+// ==========================================
+
+model IntegrationProvider {
+  id            String          @id @default(uuid())
+  code          String          @unique // WEBMOTORS, OLX, ICARROS, MERCADOLIVRE
+  name          String
+  isActive      Boolean         @default(true)
+  environment   String          @default("HOMOLOGACAO") // HOMOLOGACAO, PRODUCAO
+  apiKey        String?
+  apiSecret     String?
+  webhookSecret String?
+  settings      String?         // JSON
+  lastSyncAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  listings      PortalListing[]
+  syncLogs      SyncLog[]
+  leads         ExternalLead[]
+}
+
+model PortalListing {
+  id             String              @id @default(uuid())
+  providerId     String
+  provider       IntegrationProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  motorcycleId   String
+  motorcycle     Motorcycle          @relation(fields: [motorcycleId], references: [id], onDelete: Cascade)
+  externalId     String?
+  externalUrl    String?
+  status         String              @default("DRAFT") // DRAFT, PUBLISHED, PAUSED, ERROR, REMOVED
+  publishedPrice Float
+  syncAttempts   Int                 @default(0)
+  lastError      String?
+  lastSyncAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  syncLogs       SyncLog[]
+}
+
+model ExternalLead {
+  id             String              @id @default(uuid())
+  providerId     String
+  provider       IntegrationProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  motorcycleId   String?
+  externalId     String?
+  name           String
+  phone          String
+  email          String?
+  message        String?
+  rawPayload     String?
+  ingestedToCrm  Boolean             @default(false)
+  internalLeadId String?
+  createdAt      DateTime            @default(now())
+}
+
+model SyncLog {
+  id              String              @id @default(uuid())
+  providerId      String
+  provider        IntegrationProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  listingId       String?
+  listing         PortalListing?      @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  action          String              // PUBLISH, UPDATE, PAUSE, REMOVE, WEBHOOK_LEAD
+  status          String              // SUCCESS, FAILED
+  requestPayload  String?
+  responsePayload String?
+  errorMessage    String?
+  createdAt       DateTime            @default(now())
+}
+
+// ==========================================
+// PRD 12 — FISCAL, BANCOS E RENAVE
+// ==========================================
+
+model FiscalDocument {
+  id                   String      @id @default(uuid())
+  number               Int?
+  series               Int         @default(1)
+  type                 String      // NFE_ENTRADA_1102, NFE_SAIDA_5102, CANCELAMENTO
+  status               String      @default("AUTORIZADA") // RASCUNHO, TRANSMITIDA, AUTORIZADA, REJEITADA, CANCELADA
+  motorcycleId         String?
+  motorcycle           Motorcycle? @relation(fields: [motorcycleId], references: [id])
+  customerId           String?
+  customer             Customer?   @relation(fields: [customerId], references: [id])
+  saleId               String?
+  sale                 Sale?       @relation(fields: [saleId], references: [id])
+  chNFe                String?     @unique // Chave de 44 dígitos
+  protocolNumber       String?
+  rejectionReason      String?
+  naturezaOperacao     String      // Ex: Compra para comercialização / Venda de veículo usado
+  cfop                 String      // 1.102 / 5.102
+  valorTotal           Float
+  xmlContent           String?
+  danfePdfUrl          String?
+  environment          String      @default("HOMOLOGACAO") // HOMOLOGACAO, PRODUCAO
+  issuedAt             DateTime    @default(now())
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+}
+
+model BankCharge {
+  id                 String          @id @default(uuid())
+  financialEntryId   String?
+  financialEntry     FinancialEntry? @relation(fields: [financialEntryId], references: [id])
+  provider           String          // BANCO_INTER, SANTANDER, ITAU, MERCADOPAGO
+  chargeType         String          // PIX_DINAMICO, BOLETO_HIBRIDO
+  status             String          @default("PENDENTE") // PENDENTE, PAGO, CANCELADO, EXPIRADO
+  txid               String          @unique
+  endToEndId         String?
+  qrCode             String?         // URL ou Base64 da imagem
+  qrCodeText         String?         // Código copia e cola EMV
+  amount             Float
+  customerName       String?
+  customerDoc        String?
+  dueDate            DateTime
+  paidAt             DateTime?
+  webhookReceivedAt  DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
+
+model RenaveOperation {
+  id               String      @id @default(uuid())
+  motorcycleId     String
+  motorcycle       Motorcycle  @relation(fields: [motorcycleId], references: [id], onDelete: Cascade)
+  operationType    String      // ENTRADA_ESTOQUE, SAIDA_VENDA, TRANSFERENCIA
+  status           String      @default("INTEGRADO") // EM_PROCESSAMENTO, INTEGRADO, REJEITADO, CANCELADO
+  renavam          String
+  chassis          String
+  crvNumero        String?
+  protocolo        String?     // Protocolo oficial SERPRO / RENAVE
+  codRetorno       String?
+  mensagemRetorno  String?
+  operatorName     String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+// ==========================================
+// PRD 13 — PÓS-VENDA, SERVIÇOS E GARANTIA
+// ==========================================
+
+model ServiceOrder {
+  id                   String             @id @default(uuid())
+  code                 String             @unique // OS-2026-0001
+  motorcycleId         String
+  motorcycle           Motorcycle         @relation(fields: [motorcycleId], references: [id], onDelete: Cascade)
+  customerId           String
+  customer             Customer           @relation(fields: [customerId], references: [id])
+  type                 String             @default("GARANTIA_90D_CDC") // GARANTIA_90D_CDC, MANUTENCAO_REVISAO, ACESSORIOS
+  status               String             @default("ABERTA") // ABERTA, EM_DIAGNOSTICO, AGUARDANDO_PECAS, EM_EXECUCAO, FINALIZADA, CANCELADA
+  complaintDescription String
+  diagnosis            String?
+  solutionNotes        String?
+  mechanicName         String?
+  warrantyApproved     Boolean            @default(true) // CDC 90 dias
+  totalParts           Float              @default(0)
+  totalLabor           Float              @default(0)
+  totalCost            Float              @default(0)
+  openedAt             DateTime           @default(now())
+  closedAt             DateTime?
+  checklistDelivery    String?            // JSON de itens verificados na entrega
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  items                ServiceOrderItem[]
+}
+
+model ServiceOrderItem {
+  id             String       @id @default(uuid())
+  serviceOrderId String
+  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  type           String       // PECA, SERVICO
+  description    String
+  quantity       Int          @default(1)
+  unitCost       Float        @default(0)
+  totalCost      Float        @default(0)
+  createdAt      DateTime     @default(now())
+}
+
+// ==========================================
+// PRD 15 — NOTIFICAÇÕES E COMUNICAÇÃO
+// ==========================================
+
+model NotificationMessage {
+  id           String   @id @default(uuid())
+  channel      String   // WHATSAPP, EMAIL, SISTEMA
+  recipient    String
+  title        String?
+  content      String
+  status       String   @default("ENVIADO") // AGENDADO, ENVIADO, FALHA, ENTREGUE
+  trigger      String?  // LEAD_CRIADO, VENDA_CONCLUIDA, OS_FINALIZADA, BOLETO_GERADO
+  errorMessage String?
+  createdAt    DateTime @default(now())
+}
