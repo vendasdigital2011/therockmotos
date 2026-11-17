@@ -24,8 +24,22 @@ export async function POST(request: Request) {
     }
 
     const emailKey = email.trim().toLowerCase();
-    const ipKey = `login-fail-ip:${trustedClientIp(request)}`;
-    const acctKey = `login-fail-user:${emailKey}`;
+    const ip = trustedClientIp(request);
+    const ipKey = 'login-fail-ip:' + ip;
+    // Trava por conta + IP: errar a senha de outra pessoa de outro IP não a tranca.
+    const acctKey = 'login-fail-user:' + emailKey + '@' + ip;
+
+    // Limite ANTES de checar a senha: com a conta travada, nenhuma tentativa
+    // passa, nem a correta. Sem isso, quem adivinha a senha entra mesmo travado.
+    const byIp = isRateLimited(ipKey, MAX_FAILS_PER_IP);
+    const byAccount = isRateLimited(acctKey, MAX_FAILS_PER_ACCOUNT);
+    if (byIp.limited || byAccount.limited) {
+      const retry = Math.max(byIp.retryAfterSec, byAccount.retryAfterSec);
+      return NextResponse.json(
+        { error: 'Muitas tentativas de login. Aguarde alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(retry) } }
+      );
+    }
 
     const user = await prisma.user.findFirst({
       where: { email: emailKey, active: true },
@@ -38,15 +52,6 @@ export async function POST(request: Request) {
     if (!ok || !user) {
       recordHit(ipKey, WINDOW_MS);
       recordHit(acctKey, WINDOW_MS);
-      const byIp = isRateLimited(ipKey, MAX_FAILS_PER_IP);
-      const byAccount = isRateLimited(acctKey, MAX_FAILS_PER_ACCOUNT);
-      if (byIp.limited || byAccount.limited) {
-        const retry = Math.max(byIp.retryAfterSec, byAccount.retryAfterSec);
-        return NextResponse.json(
-          { error: 'Muitas tentativas de login. Aguarde alguns minutos.' },
-          { status: 429, headers: { 'Retry-After': String(retry) } }
-        );
-      }
       return NextResponse.json({ error: INVALID }, { status: 401 });
     }
 
