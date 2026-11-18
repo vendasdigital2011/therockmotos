@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { validateVehicleImport, executeVehicleImportBatch } from '@/lib/data-importer';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function POST(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE']);
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Ação não reconhecida' }, { status: 400 });
   } catch (error: any) {
-    console.error('Erro na importação de dados:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao importar dados' }, { status: 500 });
+    logError('Erro na importação de dados:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao importar dados') }, { status: 500 });
   }
 }

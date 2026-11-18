@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logError } from '@/lib/logger';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE']);
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Erro ao listar audit logs:', error);
+    logError('Erro ao listar audit logs:', error);
     return NextResponse.json({ error: 'Erro ao carregar trilha de auditoria' }, { status: 500 });
   }
 }

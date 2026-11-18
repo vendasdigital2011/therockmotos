@@ -3,6 +3,8 @@ import { requireUser, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { rateLimit, trustedClientIp } from '@/lib/rate-limit';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
@@ -74,7 +76,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ leads, metrics });
   } catch (error) {
-    console.error('Erro ao buscar leads:', error);
+    logError('Erro ao buscar leads:', error);
     return NextResponse.json({ error: 'Erro ao buscar leads' }, { status: 500 });
   }
 }
@@ -180,8 +182,8 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(lead, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao criar lead:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao registrar lead' }, { status: 500 });
+    logError('Erro ao criar lead:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao registrar lead') }, { status: 500 });
   }
 }
 
@@ -279,6 +281,6 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(updated);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Erro ao atualizar lead' }, { status: 500 });
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao atualizar lead') }, { status: 500 });
   }
 }

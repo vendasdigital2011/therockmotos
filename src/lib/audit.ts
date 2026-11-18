@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { logError } from './logger';
 
 export interface AuditLogParams {
   userId?: string | null;
@@ -26,7 +27,7 @@ export async function logAudit(params: AuditLogParams): Promise<void> {
       },
     });
   } catch (error) {
-    console.error('Falha ao registrar AuditLog:', error);
+    logError('Falha ao registrar AuditLog:', error);
   }
 }
 

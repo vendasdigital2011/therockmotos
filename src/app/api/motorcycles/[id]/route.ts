@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(
   request: Request,
@@ -47,7 +49,7 @@ export async function GET(
     }
     return NextResponse.json(moto);
   } catch (error) {
-    console.error('Erro ao buscar moto:', error);
+    logError('Erro ao buscar moto:', error);
     return NextResponse.json({ error: 'Erro ao buscar moto' }, { status: 500 });
   }
 }
@@ -175,8 +177,8 @@ export async function PATCH(
     }
     return NextResponse.json(updated);
   } catch (error: any) {
-    console.error('Erro ao atualizar moto:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao atualizar moto' }, { status: 500 });
+    logError('Erro ao atualizar moto:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao atualizar moto') }, { status: 500 });
   }
 }
 
@@ -204,7 +206,7 @@ export async function DELETE(
     await prisma.motorcycle.delete({ where: { id } });
     return NextResponse.json({ message: 'Moto removida com sucesso.' });
   } catch (error: any) {
-    console.error('Erro ao deletar moto:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao deletar moto' }, { status: 500 });
+    logError('Erro ao deletar moto:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao deletar moto') }, { status: 500 });
   }
 }

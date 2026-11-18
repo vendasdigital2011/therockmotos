@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function POST(
   request: Request,
@@ -60,8 +62,8 @@ export async function POST(
 
     return NextResponse.json(cost, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao adicionar custo:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao adicionar custo' }, { status: 500 });
+    logError('Erro ao adicionar custo:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao adicionar custo') }, { status: 500 });
   }
 }
 
@@ -104,7 +106,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Custo removido com sucesso' });
   } catch (error: any) {
-    console.error('Erro ao remover custo:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao remover custo' }, { status: 500 });
+    logError('Erro ao remover custo:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao remover custo') }, { status: 500 });
   }
 }

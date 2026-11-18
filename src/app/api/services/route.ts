@@ -6,6 +6,8 @@ import {
   finalizeServiceOrder,
   checkWarrantyEligibility,
 } from '@/lib/post-sale-services';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const auth = await requireUser();
@@ -31,8 +33,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json(orders);
   } catch (error: any) {
-    console.error('Erro na API de Serviços/Garantia:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao listar ordens de serviço' }, { status: 500 });
+    logError('Erro na API de Serviços/Garantia:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao listar ordens de serviço') }, { status: 500 });
   }
 }
 
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Ação não reconhecida' }, { status: 400 });
   } catch (error: any) {
-    console.error('Erro ao processar serviço:', error);
-    return NextResponse.json({ error: error.message || 'Erro na operação de serviço' }, { status: 500 });
+    logError('Erro ao processar serviço:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro na operação de serviço') }, { status: 500 });
   }
 }

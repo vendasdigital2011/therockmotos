@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function POST(
   request: Request,
@@ -49,8 +51,8 @@ export async function POST(
 
     return NextResponse.json(task, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao criar pendência:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao criar pendência' }, { status: 500 });
+    logError('Erro ao criar pendência:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao criar pendência') }, { status: 500 });
   }
 }
 
@@ -92,8 +94,8 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (error: any) {
-    console.error('Erro ao atualizar pendência:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao atualizar pendência' }, { status: 500 });
+    logError('Erro ao atualizar pendência:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao atualizar pendência') }, { status: 500 });
   }
 }
 
@@ -124,7 +126,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Pendência removida com sucesso' });
   } catch (error: any) {
-    console.error('Erro ao remover pendência:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao remover pendência' }, { status: 500 });
+    logError('Erro ao remover pendência:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao remover pendência') }, { status: 500 });
   }
 }

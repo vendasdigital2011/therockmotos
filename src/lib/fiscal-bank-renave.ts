@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { logAudit } from './audit';
+import { AppError } from './errors';
 
 // ==========================================
 // 12A — FISCAL: NF-e SIMULATION & DANFE
@@ -41,7 +42,7 @@ export async function issueFiscalDocument(params: NFeSimulationParams) {
   });
 
   if (!moto) {
-    throw new Error('Motocicleta não encontrada para emissão fiscal.');
+    throw new AppError('MOTO_NOT_FOUND', 'Motocicleta não encontrada para emissão fiscal.', 404);
   }
 
   let customer = null;
@@ -221,7 +222,7 @@ export async function processBankWebhook(payload: {
   });
 
   if (!charge) {
-    throw new Error(`Cobrança com TXID ${txid} não encontrada.`);
+    throw new AppError('CHARGE_NOT_FOUND', `Cobrança com TXID ${txid} não encontrada.`, 404);
   }
 
   if (charge.status === 'PAGO') {
@@ -290,7 +291,7 @@ export async function registerRenaveOperation(params: {
   });
 
   if (!moto) {
-    throw new Error('Motocicleta não encontrada para operação RENAVE.');
+    throw new AppError('MOTO_NOT_FOUND', 'Motocicleta não encontrada para operação RENAVE.', 404);
   }
 
   const renavam = moto.renavam || '00129847192';

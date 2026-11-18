@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { SESSION_COOKIE, verifySessionToken } from './session';
+import { logError } from './logger';
 
 export type UserRole = 'ADMIN' | 'GERENTE' | 'VENDEDOR' | 'FINANCEIRO' | 'ESTOQUE';
 
@@ -40,7 +41,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
       branchName: user.branch?.name,
     };
   } catch (error) {
-    console.error('Falha ao validar sessão:', error);
+    logError('Falha ao validar sessão:', error);
     return null;
   }
 }

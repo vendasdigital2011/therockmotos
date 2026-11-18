@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { logAudit } from './audit';
+import { AppError } from './errors';
 
 export interface CreateServiceOrderParams {
   motorcycleId: string;
@@ -130,7 +131,7 @@ export async function finalizeServiceOrder(
   });
 
   if (!os) {
-    throw new Error('Ordem de serviço não encontrada');
+    throw new AppError('SERVICE_ORDER_NOT_FOUND', 'Ordem de serviço não encontrada', 404);
   }
 
   const now = new Date();

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET() {
   const auth = await requireUser(['ADMIN']);
@@ -46,7 +47,7 @@ export async function GET() {
       {
         status: 'UNHEALTHY',
         timestamp: new Date().toISOString(),
-        error: error.message || 'Falha na checagem de saúde do sistema',
+        error: publicMessage(error, 'Falha na checagem de saúde do sistema'),
       },
       { status: 503 }
     );

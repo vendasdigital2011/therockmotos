@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { processBankWebhook } from '@/lib/fiscal-bank-renave';
 import { verifyWebhookSignature } from '@/lib/webhook-signature';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { publicMessage } from '@/lib/errors';
 
 // Webhook público do provedor bancário (baixa automática de cobrança PIX/boleto).
 // Não exige login: a autenticidade vem da assinatura HMAC com BANK_WEBHOOK_SECRET.
@@ -46,6 +47,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Erro ao processar webhook.' }, { status: 422 });
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao processar webhook.') }, { status: 422 });
   }
 }

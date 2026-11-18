@@ -3,6 +3,8 @@ import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { autoRemoveSoldVehicleFromPortals } from '@/lib/portal-adapters';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET() {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
@@ -26,7 +28,7 @@ export async function GET() {
     }
     return NextResponse.json(sales);
   } catch (error) {
-    console.error('Erro ao listar vendas:', error);
+    logError('Erro ao listar vendas:', error);
     return NextResponse.json({ error: 'Erro ao listar vendas' }, { status: 500 });
   }
 }
@@ -235,7 +237,7 @@ export async function POST(request: Request) {
     try {
       await autoRemoveSoldVehicleFromPortals(moto.id, seller.name);
     } catch (portalErr) {
-      console.warn('Aviso: falha na despublicação de portais após venda:', portalErr);
+      logError('Aviso: falha na despublicação de portais após venda:', portalErr);
     }
 
     if (!canViewFinancialCosts(auth.role)) {
@@ -247,7 +249,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao concretizar venda:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao concretizar venda' }, { status: 500 });
+    logError('Erro ao concretizar venda:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao concretizar venda') }, { status: 500 });
   }
 }

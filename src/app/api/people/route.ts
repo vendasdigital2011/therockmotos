@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isValidDocument, maskDocument } from '@/lib/documents-br';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 // Perfis que veem o CPF/CNPJ completo. Os demais veem só os 2 últimos dígitos (LGPD).
 const SEE_FULL_DOCUMENT = ['ADMIN', 'GERENTE', 'FINANCEIRO'];
@@ -59,7 +61,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(canSeeDoc ? people : people.map((p) => ({ ...p, document: maskDocument(p.document) })));
   } catch (error: any) {
-    console.error('Erro ao listar pessoas:', error);
+    logError('Erro ao listar pessoas:', error);
     return NextResponse.json({ error: 'Erro ao listar pessoas' }, { status: 500 });
   }
 }
@@ -139,6 +141,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(person, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Erro ao cadastrar pessoa' }, { status: 500 });
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao cadastrar pessoa') }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { logAudit } from './audit';
+import { AppError, publicMessage } from './errors';
 
 export interface PortalValidationResult {
   isValid: boolean;
@@ -115,7 +116,7 @@ export async function syncListingToPortal(
   });
 
   if (!provider || !provider.isActive) {
-    throw new Error(`Provedor ${providerCode} não está ativo ou configurado.`);
+    throw new AppError('PROVIDER_INACTIVE', `Provedor ${providerCode} não está ativo ou configurado.`, 422);
   }
 
   const moto = await prisma.motorcycle.findUnique({
@@ -123,7 +124,7 @@ export async function syncListingToPortal(
   });
 
   if (!moto) {
-    throw new Error('Motocicleta não encontrada');
+    throw new AppError('MOTO_NOT_FOUND', 'Motocicleta não encontrada', 404);
   }
 
   // Validação prévia caso vá publicar ou atualizar
@@ -139,7 +140,7 @@ export async function syncListingToPortal(
           errorMessage: `Falha na pré-validação: ${validation.errors.join('; ')}`,
         },
       });
-      throw new Error(`Erro de validação do anúncio: ${validation.errors.join(', ')}`);
+      throw new AppError('LISTING_INVALID', `Erro de validação do anúncio: ${validation.errors.join(', ')}`, 422);
     }
   }
 
@@ -235,7 +236,7 @@ export async function syncListingToPortal(
         where: { id: listing.id },
         data: {
           status: 'ERROR',
-          lastError: error.message,
+          lastError: publicMessage(error, 'Falha na sincronização'),
           syncAttempts: listing.syncAttempts + 1,
         },
       });
@@ -247,7 +248,7 @@ export async function syncListingToPortal(
         listingId: listing?.id,
         action,
         status: 'FAILED',
-        errorMessage: error.message,
+        errorMessage: publicMessage(error, 'Falha na sincronização'),
       },
     });
 
@@ -271,7 +272,7 @@ export async function autoRemoveSoldVehicleFromPortals(motorcycleId: string, ope
       const res = await syncListingToPortal(listing.provider.code, motorcycleId, 'REMOVE', operatorName);
       results.push(res);
     } catch (err: any) {
-      results.push({ error: err.message, provider: listing.provider.code });
+      results.push({ error: publicMessage(err, 'Falha na sincronização'), provider: listing.provider.code });
     }
   }
 
@@ -285,7 +286,7 @@ export async function ingestExternalLeadFromWebhook(providerCode: string, payloa
   });
 
   if (!provider) {
-    throw new Error(`Provedor ${providerCode} não cadastrado`);
+    throw new AppError('PROVIDER_NOT_FOUND', `Provedor ${providerCode} não cadastrado`, 404);
   }
 
   const { externalId, motorcyclePlate, name, phone, email, message } = payload;

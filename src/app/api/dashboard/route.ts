@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logError } from '@/lib/logger';
 
 export async function GET() {
   const auth = await requireUser();
@@ -178,7 +179,7 @@ export async function GET() {
     }
     return NextResponse.json(payload);
   } catch (error) {
-    console.error('Erro no dashboard API:', error);
+    logError('Erro no dashboard API:', error);
     return NextResponse.json({ error: 'Erro ao carregar dados' }, { status: 500 });
   }
 }

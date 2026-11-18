@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { syncListingToPortal } from '@/lib/portal-adapters';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE']);
@@ -70,8 +72,8 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
-    console.error('Erro na API de Portais:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao carregar portais' }, { status: 500 });
+    logError('Erro na API de Portais:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao carregar portais') }, { status: 500 });
   }
 }
 
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Ação não reconhecida' }, { status: 400 });
   } catch (error: any) {
-    console.error('Erro ao processar ação de portais:', error);
-    return NextResponse.json({ error: error.message || 'Erro no portal' }, { status: 500 });
+    logError('Erro ao processar ação de portais:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro no portal') }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { verifyPassword, verifyDummy } from '@/lib/password';
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/session';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { reserve, release, trustedClientIp } from '@/lib/rate-limit';
+import { logError } from '@/lib/logger';
 
 const INVALID = 'E-mail ou senha inválidos.';
 const WINDOW_MS = 15 * 60 * 1000;
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Erro no login:', error);
+    logError('Erro no login:', error);
     return NextResponse.json({ error: 'Erro ao autenticar usuário' }, { status: 500 });
   }
 }

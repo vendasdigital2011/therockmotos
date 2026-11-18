@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 // Cache em memória para não sobrecarregar a API pública
 let cachedBrands: { codigo: string; nome: string }[] | null = null;
@@ -154,7 +156,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ error: 'Ação não reconhecida' }, { status: 400 });
   } catch (error: any) {
-    console.error('Erro na rota FIPE:', error);
-    return NextResponse.json({ error: error.message || 'Erro interno na rota FIPE' }, { status: 500 });
+    logError('Erro na rota FIPE:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro interno na rota FIPE') }, { status: 500 });
   }
 }

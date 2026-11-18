@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ingestExternalLeadFromWebhook } from '@/lib/portal-adapters';
 import { verifyWebhookSignature } from '@/lib/webhook-signature';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { publicMessage } from '@/lib/errors';
 
 // Webhook público de portais (OLX, Webmotors, iCarros...). Sem login: a
 // autenticidade vem da assinatura HMAC com o webhookSecret de cada provedor,
@@ -44,6 +45,6 @@ export async function POST(request: Request) {
     const result = await ingestExternalLeadFromWebhook(providerCode, body.payload);
     return NextResponse.json(result);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Erro ao processar webhook.' }, { status: 422 });
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao processar webhook.') }, { status: 422 });
   }
 }

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { requireUser } from '@/lib/auth';
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/session';
+import { logError } from '@/lib/logger';
 
 // Lets an ADMIN take over another user's session (e.g. to check what a
 // vendedor sees). Only an authenticated ADMIN can call it, and the target must
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (e) {
-    console.error('Erro ao trocar sessão:', e);
+    logError('Erro ao trocar sessão:', e);
     return NextResponse.json({ error: 'Erro ao trocar sessão' }, { status: 500 });
   }
 }

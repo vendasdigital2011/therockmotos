@@ -6,6 +6,8 @@ import {
   createDynamicPixCharge,
   registerRenaveOperation,
 } from '@/lib/fiscal-bank-renave';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'FINANCEIRO']);
@@ -52,8 +54,8 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
-    console.error('Erro na API Fiscal/Bancos/RENAVE:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao carregar dados fiscais' }, { status: 500 });
+    logError('Erro na API Fiscal/Bancos/RENAVE:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao carregar dados fiscais') }, { status: 500 });
   }
 }
 
@@ -109,7 +111,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Ação não reconhecida' }, { status: 400 });
   } catch (error: any) {
-    console.error('Erro na ação fiscal:', error);
-    return NextResponse.json({ error: error.message || 'Erro no módulo fiscal' }, { status: 500 });
+    logError('Erro na ação fiscal:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro no módulo fiscal') }, { status: 500 });
   }
 }

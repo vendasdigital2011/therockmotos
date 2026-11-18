@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   try {
@@ -78,7 +80,7 @@ export async function GET(request: Request) {
     }
     return NextResponse.json(motorcycles);
   } catch (error) {
-    console.error('Erro ao listar motos:', error);
+    logError('Erro ao listar motos:', error);
     return NextResponse.json({ error: 'Erro ao listar motos' }, { status: 500 });
   }
 }
@@ -208,7 +210,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(moto, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao cadastrar moto:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao cadastrar moto' }, { status: 500 });
+    logError('Erro ao cadastrar moto:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao cadastrar moto') }, { status: 500 });
   }
 }

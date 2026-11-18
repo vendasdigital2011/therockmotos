@@ -8,6 +8,8 @@ import {
   generateTrafficResponsibilityHtml,
 } from '@/lib/documents';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
@@ -52,7 +54,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ documents });
   } catch (error) {
-    console.error('Erro ao listar documentos:', error);
+    logError('Erro ao listar documentos:', error);
     return NextResponse.json({ error: 'Erro ao listar documentos' }, { status: 500 });
   }
 }
@@ -209,8 +211,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(doc, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao gerar documento:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao gerar documento' }, { status: 500 });
+    logError('Erro ao gerar documento:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao gerar documento') }, { status: 500 });
   }
 }
 
@@ -251,7 +253,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(updated);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Erro ao atualizar documento' }, { status: 500 });
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao atualizar documento') }, { status: 500 });
   }
 }
 

@@ -7,6 +7,8 @@ import {
   answerOperationalQuery,
   runAutomationsAndGenerateAlerts,
 } from '@/lib/ai-engine';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const auth = await requireUser();
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ alerts, unreadCount });
   } catch (error: any) {
-    console.error('Erro na API de IA:', error);
+    logError('Erro na API de IA:', error);
     return NextResponse.json({ error: 'Erro ao processar requisição de IA' }, { status: 500 });
   }
 }
@@ -107,8 +109,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Ação não reconhecida' }, { status: 400 });
   } catch (error: any) {
-    console.error('Erro no processamento de IA:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao processar IA' }, { status: 500 });
+    logError('Erro no processamento de IA:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao processar IA') }, { status: 500 });
   }
 }
 
@@ -131,6 +133,6 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(updated);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Erro ao atualizar alerta' }, { status: 500 });
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao atualizar alerta') }, { status: 500 });
   }
 }

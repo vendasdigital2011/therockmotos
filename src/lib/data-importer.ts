@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { logAudit } from './audit';
+import { AppError } from './errors';
 
 export interface VehicleImportRow {
   plate: string;
@@ -129,15 +130,17 @@ export async function executeVehicleImportBatch(
   // 1. Dry run obrigatório
   const validation = await validateVehicleImport(rows);
   if (validation.invalidRows > 0) {
-    throw new Error(
-      `Importação bloqueada: ${validation.invalidRows} linhas possuem inconsistências. Corrija a planilha antes de prosseguir.`
+    throw new AppError(
+      'IMPORT_BLOCKED',
+      `Importação bloqueada: ${validation.invalidRows} linhas possuem inconsistências. Corrija a planilha antes de prosseguir.`,
+      422
     );
   }
 
   // 2. Busca filial padrão
   const branch = await prisma.branch.findFirst();
   if (!branch) {
-    throw new Error('Nenhuma filial encontrada para vincular o estoque importado.');
+    throw new AppError('BRANCH_NOT_FOUND', 'Nenhuma filial encontrada para vincular o estoque importado.', 422);
   }
 
   // 3. Execução em transação atômica (Rollback garantido se qualquer linha falhar)

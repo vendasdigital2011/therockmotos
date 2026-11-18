@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { logError } from '@/lib/logger';
+import { publicMessage } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'FINANCEIRO']);
@@ -178,8 +180,8 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
-    console.error('Erro no módulo financeiro:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao carregar dados financeiros' }, { status: 500 });
+    logError('Erro no módulo financeiro:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao carregar dados financeiros') }, { status: 500 });
   }
 }
 
@@ -241,8 +243,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(entry, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao criar título financeiro:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao criar título financeiro' }, { status: 500 });
+    logError('Erro ao criar título financeiro:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao criar título financeiro') }, { status: 500 });
   }
 }
 
@@ -347,8 +349,8 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ error: 'Ação não reconhecida' }, { status: 400 });
   } catch (error: any) {
-    console.error('Erro ao atualizar título financeiro:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao atualizar título financeiro' }, { status: 500 });
+    logError('Erro ao atualizar título financeiro:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao atualizar título financeiro') }, { status: 500 });
   }
 }
 
@@ -367,7 +369,7 @@ export async function DELETE(request: Request) {
     await prisma.financialEntry.delete({ where: { id: entryId } });
     return NextResponse.json({ message: 'Título excluído com sucesso' });
   } catch (error: any) {
-    console.error('Erro ao excluir título:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao excluir título' }, { status: 500 });
+    logError('Erro ao excluir título:', error);
+    return NextResponse.json({ error: publicMessage(error, 'Erro ao excluir título') }, { status: 500 });
   }
 }

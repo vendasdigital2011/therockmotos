@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser, USER_ROLES, type UserRole } from '@/lib/auth';
 import { hashPassword, MIN_LENGTH } from '@/lib/password';
 import { logAudit, extractClientIp } from '@/lib/audit';
+import { logError } from '@/lib/logger';
 
 // Any logged-in user can list the team (used for seller pickers);
 // password hashes are never selected.
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
-    console.error('Erro ao cadastrar usuário:', error);
+    logError('Erro ao cadastrar usuário:', error);
     return NextResponse.json({ error: 'Erro ao cadastrar usuário' }, { status: 500 });
   }
 }
