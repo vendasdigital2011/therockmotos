@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
 // Cache em memória para não sobrecarregar a API pública
 let cachedBrands: { codigo: string; nome: string }[] | null = null;
 let lastBrandsFetch = 0;
 
-export async function GET(request: Request) {
+async function GET_handler(request: Request) {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
 
@@ -160,3 +161,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro interno na rota FIPE') }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);

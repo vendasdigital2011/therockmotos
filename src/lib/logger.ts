@@ -5,6 +5,7 @@
 // segredos e dados pessoais não dependem da disciplina de quem chama.
 import pino from 'pino';
 import { sanitizeForLog, summarizeErrorMessage } from './log-sanitize';
+import { getRequestId } from './request-context';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -15,6 +16,11 @@ const base = pino({
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',
   },
   timestamp: pino.stdTimeFunctions.isoTime,
+  // requestId entra em toda linha da requisição em andamento.
+  mixin: () => {
+    const requestId = getRequestId();
+    return requestId ? { requestId } : {};
+  },
   formatters: {
     level: (label) => ({ level: label }),
     log: (obj) => sanitizeForLog(obj) as Record<string, unknown>,
@@ -26,7 +32,7 @@ export const logger = base;
 // Erro: uma linha por falha, com contexto. Não logar o mesmo erro em várias camadas:
 // quem trata a falha é quem registra.
 export function logError(message: string, error?: unknown, context: Record<string, unknown> = {}): void {
-  base.error({ ...context, err: toLogError(error) }, message);
+  base.error({ ...context, error: toLogError(error) }, message);
 }
 
 // Converte o erro em objeto simples já sanitizado. Assim o serializador padrão do Pino

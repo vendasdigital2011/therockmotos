@@ -3,8 +3,9 @@ import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function POST(
+async function POST_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -56,7 +57,7 @@ export async function POST(
   }
 }
 
-export async function PATCH(
+async function PATCH_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -99,7 +100,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETE_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -130,3 +131,7 @@ export async function DELETE(
     return NextResponse.json({ error: publicMessage(error, 'Erro ao remover pendência') }, { status: 500 });
   }
 }
+
+export const POST = withRequest(POST_handler);
+export const PATCH = withRequest(PATCH_handler);
+export const DELETE = withRequest(DELETE_handler);

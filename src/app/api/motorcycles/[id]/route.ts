@@ -4,8 +4,9 @@ import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET(
+async function GET_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -54,7 +55,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+async function PATCH_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -182,7 +183,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETE_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -210,3 +211,7 @@ export async function DELETE(
     return NextResponse.json({ error: publicMessage(error, 'Erro ao deletar moto') }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const PATCH = withRequest(PATCH_handler);
+export const DELETE = withRequest(DELETE_handler);

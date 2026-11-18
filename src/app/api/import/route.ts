@@ -3,8 +3,9 @@ import { requireUser } from '@/lib/auth';
 import { validateVehicleImport, executeVehicleImportBatch } from '@/lib/data-importer';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE']);
   if (auth instanceof NextResponse) return auth;
 
@@ -39,3 +40,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro ao importar dados') }, { status: 500 });
   }
 }
+
+export const POST = withRequest(POST_handler);

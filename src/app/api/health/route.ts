@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET() {
+async function GET_handler() {
   const auth = await requireUser(['ADMIN']);
   if (auth instanceof NextResponse) return auth;
 
@@ -53,3 +54,5 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withRequest(GET_handler);

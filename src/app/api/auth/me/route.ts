@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, canViewFinancialCosts } from '@/lib/auth';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET() {
+async function GET_handler() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -18,3 +19,5 @@ export async function GET() {
     },
   });
 }
+
+export const GET = withRequest(GET_handler);

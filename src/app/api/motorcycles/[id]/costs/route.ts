@@ -4,8 +4,9 @@ import { prisma } from '@/lib/prisma';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function POST(
+async function POST_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -67,7 +68,7 @@ export async function POST(
   }
 }
 
-export async function DELETE(
+async function DELETE_handler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -110,3 +111,6 @@ export async function DELETE(
     return NextResponse.json({ error: publicMessage(error, 'Erro ao remover custo') }, { status: 500 });
   }
 }
+
+export const POST = withRequest(POST_handler);
+export const DELETE = withRequest(DELETE_handler);

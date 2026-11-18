@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET() {
+async function GET_handler() {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
 
@@ -183,3 +184,5 @@ export async function GET() {
     return NextResponse.json({ error: 'Erro ao carregar dados' }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);

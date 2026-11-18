@@ -4,10 +4,11 @@ import { requireUser, USER_ROLES, type UserRole } from '@/lib/auth';
 import { hashPassword, MIN_LENGTH } from '@/lib/password';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { logError } from '@/lib/logger';
+import { withRequest } from '@/lib/request-context';
 
 // Any logged-in user can list the team (used for seller pickers);
 // password hashes are never selected.
-export async function GET() {
+async function GET_handler() {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
 
@@ -30,7 +31,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser(['ADMIN']);
   if (auth instanceof NextResponse) return auth;
 
@@ -93,3 +94,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao cadastrar usuário' }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const POST = withRequest(POST_handler);

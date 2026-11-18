@@ -4,11 +4,12 @@ import { ingestExternalLeadFromWebhook } from '@/lib/portal-adapters';
 import { verifyWebhookSignature } from '@/lib/webhook-signature';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
 // Webhook público de portais (OLX, Webmotors, iCarros...). Sem login: a
 // autenticidade vem da assinatura HMAC com o webhookSecret de cada provedor,
 // cadastrado no painel de integrações. Provedor sem segredo fica desativado.
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const rawBody = await request.text();
 
   let body: any;
@@ -48,3 +49,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro ao processar webhook.') }, { status: 422 });
   }
 }
+
+export const POST = withRequest(POST_handler);

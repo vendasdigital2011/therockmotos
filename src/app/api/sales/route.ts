@@ -5,8 +5,9 @@ import { logAudit, extractClientIp } from '@/lib/audit';
 import { autoRemoveSoldVehicleFromPortals } from '@/lib/portal-adapters';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET() {
+async function GET_handler() {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
   if (auth instanceof NextResponse) return auth;
 
@@ -33,7 +34,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
   if (auth instanceof NextResponse) return auth;
 
@@ -253,3 +254,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro ao concretizar venda') }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const POST = withRequest(POST_handler);

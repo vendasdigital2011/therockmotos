@@ -3,11 +3,12 @@ import { processBankWebhook } from '@/lib/fiscal-bank-renave';
 import { verifyWebhookSignature } from '@/lib/webhook-signature';
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
 // Webhook público do provedor bancário (baixa automática de cobrança PIX/boleto).
 // Não exige login: a autenticidade vem da assinatura HMAC com BANK_WEBHOOK_SECRET.
 // Sem o segredo configurado, o endpoint fica desativado.
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const secret = process.env.BANK_WEBHOOK_SECRET;
   if (!secret || secret.length < 32) {
     return NextResponse.json({ error: 'Webhook bancário não configurado.' }, { status: 503 });
@@ -50,3 +51,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro ao processar webhook.') }, { status: 422 });
   }
 }
+
+export const POST = withRequest(POST_handler);

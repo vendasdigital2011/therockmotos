@@ -6,6 +6,7 @@ import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { reserve, release, trustedClientIp } from '@/lib/rate-limit';
 import { logError } from '@/lib/logger';
+import { withRequest } from '@/lib/request-context';
 
 const INVALID = 'E-mail ou senha inválidos.';
 const WINDOW_MS = 15 * 60 * 1000;
@@ -33,7 +34,7 @@ function reserveAll(keys: { key: string; limit: number }[]): { ok: true; held: R
   return { ok: true, held };
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   try {
     const body = await request.json();
     const { email, password } = body ?? {};
@@ -102,3 +103,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao autenticar usuário' }, { status: 500 });
   }
 }
+
+export const POST = withRequest(POST_handler);

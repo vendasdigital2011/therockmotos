@@ -5,11 +5,12 @@ import { logAudit, extractClientIp } from '@/lib/audit';
 import { requireUser } from '@/lib/auth';
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/session';
 import { logError } from '@/lib/logger';
+import { withRequest } from '@/lib/request-context';
 
 // Lets an ADMIN take over another user's session (e.g. to check what a
 // vendedor sees). Only an authenticated ADMIN can call it, and the target must
 // be active. Every switch is written to the audit log.
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser(['ADMIN']);
   if (auth instanceof NextResponse) return auth;
 
@@ -55,3 +56,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao trocar sessão' }, { status: 500 });
   }
 }
+
+export const POST = withRequest(POST_handler);

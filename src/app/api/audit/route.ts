@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET(request: Request) {
+async function GET_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE']);
   if (auth instanceof NextResponse) return auth;
 
@@ -63,3 +64,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Erro ao carregar trilha de auditoria' }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);

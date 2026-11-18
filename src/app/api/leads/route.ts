@@ -5,8 +5,9 @@ import { logAudit, extractClientIp } from '@/lib/audit';
 import { rateLimit, trustedClientIp } from '@/lib/rate-limit';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET(request: Request) {
+async function GET_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
   if (auth instanceof NextResponse) return auth;
 
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
 // source, budget, notes...) are accepted only from a logged-in team member.
 const MAX_FIELD = 500;
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   try {
     const staff = await getCurrentUser();
     // Antispam do formulário público: máx. 5 envios por IP a cada 10 minutos.
@@ -187,7 +188,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PATCH(request: Request) {
+async function PATCH_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR']);
   if (auth instanceof NextResponse) return auth;
 
@@ -284,3 +285,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro ao atualizar lead') }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const POST = withRequest(POST_handler);
+export const PATCH = withRequest(PATCH_handler);

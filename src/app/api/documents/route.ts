@@ -10,8 +10,9 @@ import {
 import { logAudit, extractClientIp } from '@/lib/audit';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET(request: Request) {
+async function GET_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
   if (auth instanceof NextResponse) return auth;
 
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
   if (auth instanceof NextResponse) return auth;
 
@@ -216,7 +217,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PATCH(request: Request) {
+async function PATCH_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'VENDEDOR', 'FINANCEIRO']);
   if (auth instanceof NextResponse) return auth;
 
@@ -257,7 +258,7 @@ export async function PATCH(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+async function DELETE_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE']);
   if (auth instanceof NextResponse) return auth;
 
@@ -278,3 +279,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Erro ao excluir documento' }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const POST = withRequest(POST_handler);
+export const PATCH = withRequest(PATCH_handler);
+export const DELETE = withRequest(DELETE_handler);

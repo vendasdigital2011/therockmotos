@@ -8,8 +8,9 @@ import {
 } from '@/lib/post-sale-services';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET(request: Request) {
+async function GET_handler(request: Request) {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
 
@@ -74,3 +75,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro na operação de serviço') }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const POST = withRequest(POST_handler);

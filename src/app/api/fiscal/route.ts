@@ -8,8 +8,9 @@ import {
 } from '@/lib/fiscal-bank-renave';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET(request: Request) {
+async function GET_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'FINANCEIRO']);
   if (auth instanceof NextResponse) return auth;
 
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'FINANCEIRO']);
   if (auth instanceof NextResponse) return auth;
 
@@ -115,3 +116,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro no módulo fiscal') }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const POST = withRequest(POST_handler);

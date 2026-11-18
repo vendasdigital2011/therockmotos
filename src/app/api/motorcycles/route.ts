@@ -3,8 +3,9 @@ import { requireUser, canViewFinancialCosts } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
 import { publicMessage } from '@/lib/errors';
+import { withRequest } from '@/lib/request-context';
 
-export async function GET(request: Request) {
+async function GET_handler(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const isPublicOnly = searchParams.get('public') === 'true';
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: Request) {
   const auth = await requireUser(['ADMIN', 'GERENTE', 'ESTOQUE']);
   if (auth instanceof NextResponse) return auth;
 
@@ -214,3 +215,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: publicMessage(error, 'Erro ao cadastrar moto') }, { status: 500 });
   }
 }
+
+export const GET = withRequest(GET_handler);
+export const POST = withRequest(POST_handler);
